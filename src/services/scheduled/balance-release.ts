@@ -55,8 +55,8 @@ export async function releaseScheduledFunds(
     );
 
     // Find SALE transactions that are in PENDING status
-    // Note: If pending_release_at field exists, use it directly in the query
-    // Otherwise, calculate based on created_at + BALANCE_RELEASE_HOURS
+    // The pending_release_at timestamp can be stored in transaction.metadata.pending_release_at
+    // If not present, it's calculated from created_at + BALANCE_RELEASE_HOURS
     const pendingTransactions = await manager
       .createQueryBuilder(Transaction, "transaction")
       .where("transaction.type = :type", { type: TransactionType.SALE })
@@ -88,16 +88,21 @@ export async function releaseScheduledFunds(
           `[Balance Release] Processing transaction ${transaction.id} for seller ${transaction.seller_id}`
         );
 
-        // Make the sale available
-        await ledgerService.makeSaleAvailable(
-          transaction.seller_id,
-          Number(transaction.amount),
-          transaction.reference_id || transaction.id
-        );
+        // Use a database transaction to ensure atomicity
+        await manager.transaction(async (transactionManager) => {
+          const transactionLedgerService = new LedgerService(transactionManager);
+          
+          // Make the sale available
+          await transactionLedgerService.makeSaleAvailable(
+            transaction.seller_id,
+            Number(transaction.amount),
+            transaction.reference_id || transaction.id
+          );
 
-        // Update transaction status to COMPLETED
-        transaction.status = TransactionStatus.COMPLETED;
-        await manager.save(transaction);
+          // Update transaction status to COMPLETED
+          transaction.status = TransactionStatus.COMPLETED;
+          await transactionManager.save(transaction);
+        });
 
         processed++;
         console.log(

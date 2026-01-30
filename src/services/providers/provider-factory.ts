@@ -58,10 +58,12 @@ export class ProviderFactory {
         case ProviderType.MERCADOPAGO:
           return new MercadoPagoProvider();
         default:
-          console.warn(
-            `Unknown provider "${providerName}", defaulting to Stripe`
+          console.error(
+            `Unknown payment provider "${providerName}". Valid options are: stripe, pagseguro, mercadopago`
           );
-          return new StripeProvider();
+          throw new Error(
+            `Unknown payment provider "${providerName}". Please check PAYMENT_PROVIDER or WITHDRAWAL_PROVIDER environment variable.`
+          );
       }
     } catch (error) {
       console.error(
