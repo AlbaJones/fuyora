@@ -27,7 +27,7 @@ MedusaJS-based C2C marketplace backend with complete KYC workflow, multi-level a
 ### Sprint 4 - Dashboard, Multi-Level & Payments
 - **Admin Dashboard**: Real-time statistics and KYC metrics
 - **Multi-Level Approval**: 3-level escalation workflow for complex cases
-- **Stripe Integration**: Payment processing with platform fees (10%)
+- **Payment Integration**: Payment processing with platform fees (10%)
 - **Document Viewer**: Manual document review (NO AI/OCR)
 
 ### Sprint 5 - Marketplace Core
@@ -45,7 +45,7 @@ MedusaJS-based C2C marketplace backend with complete KYC workflow, multi-level a
 - **Dispute Protection**: Disputes block withdrawals but NOT balance release
 
 ### 🆕 Payment Restructure - Internal Ledger System
-- **Internal Ledger**: Platform-controlled balance tracking (replaced Stripe Connect)
+- **Internal Ledger**: Platform-controlled balance tracking
 - **Seller Balances**: Available, pending, and held funds
 - **Withdrawal System**: Seller-requested, admin-approved withdrawals
 - **Complete Audit**: Immutable transaction ledger
@@ -933,9 +933,9 @@ Configure SMTP in environment variables (optional - system works without email).
 ✅ **Sprint 1**: KYC Submission, S3 Uploads, Audit Logging  
 ✅ **Sprint 2**: Admin Approval/Rejection Workflow  
 ✅ **Sprint 3**: Rate Limiting, CPF Validation, Email Notifications  
-✅ **Sprint 4**: Admin Dashboard, Multi-Level Workflow, Stripe Payments  
+✅ **Sprint 4**: Admin Dashboard, Multi-Level Workflow, Payments  
 ✅ **Sprint 5**: Products, Orders, Reviews - **MARKETPLACE COMPLETO** 🎉  
-✅ **Sprint 6**: Temporal Release (72h), Disputes, Brazilian Providers 🇧🇷
+✅ **Sprint 6**: Temporal Release (72h), Disputes, PagSeguro Integration 🇧🇷
 
 ## API Endpoints Summary
 
@@ -945,26 +945,26 @@ Configure SMTP in environment variables (optional - system works without email).
 - **Admin KYC (4)**: List, Get, Approve, Reject
 - **Admin Dashboard (4)**: Stats, Metrics, Activity, Documents
 - **Admin Multi-Level (4)**: List by level, Approve level, Escalate, Reject level
-- **Payments (4)**: Create seller account, Get account, Create intent, Webhook
+- **Payments (2)**: Create intent, Webhook
 - **Products (6)**: Create, List, Get, Update, Delete, My Products
 - **Orders (6)**: Create, Get, Buyer Orders, Seller Orders, Complete, Cancel
 - **Reviews (3)**: Create, Get Reviews, Get Rating
 - **Disputes (6)**: Create, Get, Buyer Disputes, Seller Disputes, Respond, Admin Resolve
 - **Ledger (10)**: Balance, Transactions, Withdrawals (create, approve, reject, list)
-- **Webhooks (1)**: Stripe webhook
+- **Webhooks (1)**: PagSeguro webhook
 
 ## Complete Marketplace Workflow
 
 ### Seller Flow
 1. Sign up → Submit KYC → Wait for approval
-2. KYC approved → Create Stripe account
+2. KYC approved → Start selling
 3. Create products → Publish (status: ACTIVE)
 4. Receive orders → Deliver products
 5. Receive reviews from buyers
 
 ### Buyer Flow
 1. Browse products → Check seller ratings
-2. Create order → Pay via Stripe
+2. Create order → Pay via PagSeguro (PIX/Boleto/Card)
 3. Receive product
 4. Complete order → Leave review
 
@@ -974,7 +974,7 @@ Detailed sprint documentation:
 - [SPRINT1_SUMMARY.md](./SPRINT1_SUMMARY.md) - KYC, S3 Uploads, Audit Logging
 - [SPRINT2_SUMMARY.md](./SPRINT2_SUMMARY.md) - Admin Approval Workflow
 - [SPRINT3_SUMMARY.md](./SPRINT3_SUMMARY.md) - Rate Limiting, CPF Validation, Email
-- [SPRINT4_SUMMARY.md](./SPRINT4_SUMMARY.md) - Dashboard, Multi-Level, Stripe Payments
+- [SPRINT4_SUMMARY.md](./SPRINT4_SUMMARY.md) - Dashboard, Multi-Level, Payments
 - [SPRINT5_SUMMARY.md](./SPRINT5_SUMMARY.md) - Products, Orders, Reviews
 - [SPRINT6_SUMMARY.md](./SPRINT6_SUMMARY.md) - Temporal Release, Disputes, PagSeguro Integration 🆕
 - [PAYMENT_ARCHITECTURE.md](./PAYMENT_ARCHITECTURE.md) - Internal Ledger System
