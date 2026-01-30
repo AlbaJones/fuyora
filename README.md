@@ -84,6 +84,29 @@ MedusaJS-based C2C marketplace backend with complete KYC workflow, multi-level a
 - **Production Ready**: Final version 1.0 complete
 - **See**: [FINAL_VERSION.md](./FINAL_VERSION.md) for complete project summary
 
+### 🎉 V1 FINAL - Language Moderation System 💬
+- **Language Detection**: Portuguese profanity, threats, hate speech, harassment
+- **Progressive Penalties**: WARNING → 24h → 72h → 7 days bans
+- **Never Automatic Permanent**: All permanent bans require manual admin decision
+- **User Rights**: View violations, submit appeals, explain context
+- **Admin Review**: Confirm, dismiss, reduce penalties, remove bans
+- **Complete Audit**: All violations, penalties, and appeals fully logged
+- **Context Aware**: No automatic punishments, human review always available
+- **See**: [V1_CLOSURE.md](./V1_CLOSURE.md) for official project closure
+
+### 🏁 **PROJECT V1 COMPLETE - SCOPE CLOSED** 🏁
+**Version**: 1.0.0 FINAL  
+**Status**: ✅ COMPLETE AND PRODUCTION READY  
+**Date**: January 30, 2026
+
+❌ No more features will be added to V1  
+❌ No structural changes without opening V2  
+✅ Only bug fixes and performance optimizations allowed  
+
+**All future evolution must be treated as V2 or future roadmap.**
+
+**See [V1_CLOSURE.md](./V1_CLOSURE.md) for official closure declaration.**
+
 ### 🆕 Payment Architecture - Internal Ledger System (PagSeguro ONLY)
 - **Payment Provider**: PagSeguro (EXCLUSIVE) 🇧🇷
 - **Payment Methods**: PIX, Boleto Bancário, Cartão de Crédito nacional
