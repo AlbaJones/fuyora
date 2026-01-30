@@ -1,6 +1,7 @@
 import { Router } from "express";
 import storageRoutes from "./storage";
 import kycRoutes from "./kyc";
+import adminKycRoutes from "./admin-kyc";
 import bodyParser from "body-parser";
 import cors from "cors";
 
@@ -14,6 +15,7 @@ export default (rootDirectory: string): Router => {
   // Mount routes
   router.use(storageRoutes);
   router.use(kycRoutes);
+  router.use(adminKycRoutes);
 
   return router;
 };
