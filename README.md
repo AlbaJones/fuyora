@@ -44,6 +44,17 @@ MedusaJS-based C2C marketplace backend with complete KYC workflow, multi-level a
 - **Scheduled Jobs**: Automated balance release system
 - **Dispute Protection**: Disputes block withdrawals but NOT balance release
 
+### Sprint 7 - Financial Rules & Ban System 🚫
+- **Explicit Financial Rules**: Clear separation - time governs balance, disputes govern withdrawal
+- **Complete Ban System**: Account bans, IP bans, and combined bans
+- **Temporary & Permanent Bans**: Flexible duration with expiration tracking
+- **Ban Screen**: Clear communication to banned users with reason and expiration
+- **Unban Request System**: Formal appeal process for banned users
+- **Admin Ban Management**: Full ban lifecycle control
+- **IP Blocking**: Block login and registration from banned IPs
+- **Force Logout**: Automatic session invalidation on ban
+- **Complete Audit**: All ban actions fully logged
+
 ### 🆕 Payment Restructure - Internal Ledger System
 - **Internal Ledger**: Platform-controlled balance tracking
 - **Seller Balances**: Available, pending, and held funds
@@ -939,7 +950,7 @@ Configure SMTP in environment variables (optional - system works without email).
 
 ## API Endpoints Summary
 
-**Total Endpoints**: 56
+**Total Endpoints**: 65
 
 - **User (3)**: Storage presign, KYC submission, Get my KYC
 - **Admin KYC (4)**: List, Get, Approve, Reject
@@ -951,6 +962,8 @@ Configure SMTP in environment variables (optional - system works without email).
 - **Reviews (3)**: Create, Get Reviews, Get Rating
 - **Disputes (6)**: Create, Get, Buyer Disputes, Seller Disputes, Respond, Admin Resolve
 - **Ledger (10)**: Balance, Transactions, Withdrawals (create, approve, reject, list)
+- **Ban Management (5)**: Ban user, Ban IP, Ban both, List bans, Unban 🆕
+- **Unban Requests (4)**: Submit request, Ban status check, List requests (admin), Approve/Deny (admin) 🆕
 - **Webhooks (1)**: PagSeguro webhook
 
 ## Complete Marketplace Workflow
@@ -976,10 +989,12 @@ Detailed sprint documentation:
 - [SPRINT3_SUMMARY.md](./SPRINT3_SUMMARY.md) - Rate Limiting, CPF Validation, Email
 - [SPRINT4_SUMMARY.md](./SPRINT4_SUMMARY.md) - Dashboard, Multi-Level, Payments
 - [SPRINT5_SUMMARY.md](./SPRINT5_SUMMARY.md) - Products, Orders, Reviews
-- [SPRINT6_SUMMARY.md](./SPRINT6_SUMMARY.md) - Temporal Release, Disputes, PagSeguro Integration 🆕
+- [SPRINT6_SUMMARY.md](./SPRINT6_SUMMARY.md) - Temporal Release, Disputes, PagSeguro Integration
+- [SPRINT7_SUMMARY.md](./SPRINT7_SUMMARY.md) - Financial Rules Clarification & Complete Ban System 🆕
 - [PAYMENT_ARCHITECTURE.md](./PAYMENT_ARCHITECTURE.md) - Internal Ledger System
+- [PROJECT_SUMMARY.md](./PROJECT_SUMMARY.md) - Complete Project Overview
 
-## Future Enhancements (Sprint 7+)
+## Future Enhancements (Sprint 8+)
 
 - Full-text search for products
 - Shopping cart functionality
