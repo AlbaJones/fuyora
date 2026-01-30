@@ -77,16 +77,16 @@ export class Payment extends BaseEntity {
   @Column({ type: "varchar", nullable: true })
   boleto_barcode!: string | null;
 
-  // Stripe payment fields
-  @Column({ type: "varchar", nullable: true })
-  stripe_payment_intent_id!: string | null;
-
-  @Column({ type: "varchar", nullable: true })
-  stripe_charge_id!: string | null;
-
   // PagSeguro payment fields
   @Column({ type: "varchar", nullable: true })
   pagseguro_transaction_id!: string | null;
+
+  // Generic provider transaction ID (replaces Stripe-specific fields)
+  @Column({ type: "varchar", nullable: true })
+  provider_transaction_id!: string | null;
+
+  @Column({ type: "varchar", default: "pagseguro" })
+  payment_provider!: string;
 
   @Column({ type: "jsonb", nullable: true })
   metadata!: Record<string, any> | null;

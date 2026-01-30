@@ -1,14 +1,14 @@
 import { Router, Request, Response } from "express";
 import { ensureAuthenticated } from "../middleware/auth";
 import { authLimiter } from "../middleware/rate-limit";
-import { getStripeService } from "../services/stripe";
+import { getPaymentProvider } from "../services/providers/provider-factory";
 import { LedgerService } from "../services/ledger";
 
 const router = Router();
 
 /**
  * POST /payments/create-intent
- * Create a payment intent (platform account - NO Stripe Connect)
+ * Create a payment via PagSeguro
  * All payments go directly to platform, seller gets ledger credit
  */
 router.post(
@@ -31,9 +31,9 @@ router.post(
         });
       }
 
-      // Payment goes to PLATFORM account, not seller
-      const stripeService = getStripeService();
-      const paymentIntent = await stripeService.createPaymentIntent(
+      // Payment goes to PLATFORM account via PagSeguro
+      const paymentProvider = getPaymentProvider();
+      const paymentResult = await paymentProvider.processPayment(
         amount,
         currency || "brl",
         {
@@ -44,10 +44,10 @@ router.post(
       );
 
       return res.json({
-        payment_intent_id: paymentIntent.id,
-        client_secret: paymentIntent.client_secret,
-        amount: paymentIntent.amount,
-        currency: paymentIntent.currency,
+        payment_id: paymentResult.id,
+        status: paymentResult.status,
+        amount: paymentResult.amount,
+        currency: paymentResult.currency,
         message:
           "Payment will be processed via platform account. Seller will receive credit in internal ledger.",
       });
@@ -61,44 +61,38 @@ router.post(
 );
 
 /**
- * POST /webhooks/stripe
- * Stripe webhook handler
+ * POST /webhooks/pagseguro
+ * PagSeguro webhook handler
  */
-router.post("/webhooks/stripe", async (req: Request, res: Response) => {
+router.post("/webhooks/pagseguro", async (req: Request, res: Response) => {
   try {
-    const signature = req.headers["stripe-signature"] as string;
+    const paymentProvider = getPaymentProvider();
+    const webhookResult = await paymentProvider.handleWebhook(req.body);
 
-    if (!signature) {
-      return res.status(400).json({
-        message: "Missing stripe-signature header",
-      });
-    }
-
-    const stripeService = getStripeService();
-    const event = stripeService.constructWebhookEvent(req.body, signature);
-
-    console.log("Received Stripe webhook:", event.type);
+    console.log("Received PagSeguro webhook:", webhookResult.event_type);
 
     // Handle different event types
-    switch (event.type) {
-      case "payment_intent.succeeded":
-        console.log("Payment succeeded:", event.data.object);
+    switch (webhookResult.event_type) {
+      case "payment.approved":
+      case "payment.paid":
+        console.log("Payment succeeded:", webhookResult.data);
         // TODO: Update payment record in database
         // TODO: Credit seller ledger (pending)
         break;
 
-      case "payment_intent.payment_failed":
-        console.log("Payment failed:", event.data.object);
+      case "payment.failed":
+      case "payment.cancelled":
+        console.log("Payment failed:", webhookResult.data);
         // TODO: Update payment record in database
         break;
 
-      case "charge.refunded":
-        console.log("Charge refunded:", event.data.object);
+      case "payment.refunded":
+        console.log("Payment refunded:", webhookResult.data);
         // TODO: Debit seller ledger
         break;
 
       default:
-        console.log("Unhandled event type:", event.type);
+        console.log("Unhandled event type:", webhookResult.event_type);
     }
 
     return res.json({ received: true });
