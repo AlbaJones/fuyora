@@ -1,8 +1,8 @@
-# Fuyora Backend - Complete C2C Marketplace (Sprints 1-5) ✅
+# Fuyora Backend - Complete C2C Marketplace ✅
 
 **MARKETPLACE COMPLETO E FUNCIONAL!**
 
-MedusaJS-based C2C marketplace backend with complete KYC workflow, multi-level approval, admin dashboard, Stripe payments, products, orders, and reviews system.
+MedusaJS-based C2C marketplace backend with complete KYC workflow, multi-level approval, admin dashboard, **internal ledger payment system**, products, orders, and reviews system.
 
 ## Features
 
@@ -30,11 +30,19 @@ MedusaJS-based C2C marketplace backend with complete KYC workflow, multi-level a
 - **Stripe Integration**: Payment processing with platform fees (10%)
 - **Document Viewer**: Manual document review (NO AI/OCR)
 
-### Sprint 5 - Marketplace Core ⭐ NEW
+### Sprint 5 - Marketplace Core
 - **Products System**: Create, list, update, delete products
 - **Orders System**: Complete order lifecycle (pending → paid → delivered → completed)
 - **Reviews System**: Bidirectional reviews with ratings and comments
 - **Complete Workflow**: Seller lists → Buyer purchases → Reviews
+
+### 🆕 Payment Restructure - Internal Ledger System
+- **Internal Ledger**: Platform-controlled balance tracking (replaced Stripe Connect)
+- **Seller Balances**: Available, pending, and held funds
+- **Withdrawal System**: Seller-requested, admin-approved withdrawals
+- **Complete Audit**: Immutable transaction ledger
+- **Brazilian Support**: PIX and bank transfer ready
+- **See**: [PAYMENT_ARCHITECTURE.md](./PAYMENT_ARCHITECTURE.md) for complete details
 
 ## Setup
 
