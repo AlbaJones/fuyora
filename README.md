@@ -1,15 +1,26 @@
-# Fuyora Backend - Sprint 1
+# Fuyora Backend - Sprints 1, 2 & 3
 
-MedusaJS-based marketplace backend with KYC submission, presigned S3 uploads, and audit logging.
+MedusaJS-based marketplace backend with KYC submission, admin review workflow, rate limiting, CPF validation, and email notifications.
 
 ## Features
 
-### Sprint 1 Implementation
-
+### Sprint 1 - Foundation
 - **KYC Submission**: Submit KYC documents with personal data
 - **Presigned S3 URLs**: Generate secure upload URLs for avatars and KYC documents
 - **Audit Logging**: Track KYC submissions and user status changes
 - **Authentication**: JWT-based authentication middleware
+
+### Sprint 2 - Admin Workflow
+- **KYC Approval/Rejection**: Admin endpoints to review and process KYC submissions
+- **Pagination & Filtering**: List submissions with status filters
+- **Event System**: Emit events on approval/rejection
+- **Enhanced Audit**: Complete audit trail for all admin actions
+
+### Sprint 3 - Security & Validation
+- **Rate Limiting**: Protect all endpoints from abuse (CodeQL alerts resolved)
+- **CPF Validation**: Brazilian tax ID validation with checksum algorithm
+- **Email Notifications**: Automated emails for approval/rejection (Portuguese)
+- **Event Subscribers**: Auto-send emails on KYC events
 
 ## Setup
 
@@ -250,6 +261,37 @@ Reject a KYC submission with reason.
 }
 ```
 
+## Rate Limiting
+
+All endpoints are protected with rate limiting to prevent abuse:
+
+| Endpoint Type | Limit | Window | Notes |
+|--------------|-------|--------|-------|
+| KYC Submission | 5 requests | 1 hour | Prevents spam submissions |
+| Presigned URLs | 20 requests | 1 hour | Prevents storage exhaustion |
+| Authenticated | 50 requests | 15 min | General auth endpoints |
+| Admin | 100 requests | 15 min | Admin review operations |
+| General | 100 requests | 15 min | Public endpoints |
+
+Rate limit info is returned in `RateLimit-*` headers.
+
+## CPF Validation
+
+KYC submissions automatically validate Brazilian CPF (tax ID):
+- ✅ Format: `###.###.###-##` or 11 digits
+- ✅ Check digit validation (both digits)
+- ✅ Rejects invalid patterns (all same digits)
+- ✅ Auto-formats CPF for storage
+- ❌ Returns clear error messages on validation failure
+
+## Email Notifications
+
+When configured, the system sends emails (in Portuguese) for:
+- ✅ **KYC Approved**: Confirmation email with approval date
+- ✅ **KYC Rejected**: Email with rejection reason and resubmit instructions
+
+Configure SMTP in environment variables (optional - system works without email).
+
 ## Database Schema
 
 ### kyc_submission
@@ -289,6 +331,14 @@ Reject a KYC submission with reason.
 | `AWS_S3_FORCE_PATH_STYLE` | Force path-style URLs | `true` |
 | `PRESIGN_TTL_SECONDS` | Presigned URL expiration time | `900` |
 | `MAX_UPLOAD_BYTES` | Maximum upload size | `10000000` (10MB) |
+| `SMTP_HOST` | SMTP server hostname (optional) | - |
+| `SMTP_PORT` | SMTP server port (optional) | `587` |
+| `SMTP_SECURE` | Use TLS (optional) | `false` |
+| `SMTP_USER` | SMTP username (optional) | - |
+| `SMTP_PASS` | SMTP password (optional) | - |
+| `SMTP_FROM` | From email address (optional) | `noreply@fuyora.com` |
+
+**Note**: Email configuration is optional. If not set, the system logs would-send messages instead of sending emails.
 
 ## Architecture
 
@@ -297,13 +347,20 @@ Reject a KYC submission with reason.
 - `AuditLog`: Tracks audit events
 
 ### Services
-- `KycService`: Handles KYC submission logic, validation, and audit logging
+- `KycService`: Handles KYC submission, approval, rejection, and audit logging
+- `EmailService`: Sends email notifications for KYC events
 
 ### Middleware
 - `ensureAuthenticated`: JWT authentication middleware
+- `ensureAdmin`: Admin role authorization middleware
+- **Rate Limiters**: 5 different rate limiters for endpoint protection
 
 ### Utils
 - `S3PresignService`: Generates presigned S3 URLs
+- `cpf-validator`: Brazilian CPF validation with check digit algorithm
+
+### Subscribers
+- `KycSubscriber`: Listens to KYC events and sends emails
 
 ## Development Notes
 
@@ -311,13 +368,21 @@ Reject a KYC submission with reason.
 - Uses PostgreSQL for data storage
 - Redis for caching and event bus
 - S3-compatible storage for file uploads
-- Audit logging for all KYC operations
+- Complete audit logging for all operations
+- Rate limiting on all endpoints
+- CPF validation for Brazilian users
+- Email notifications (optional)
 
-## Future Enhancements (Sprint 3+)
+## Sprints Completed
 
-- Rate limiting for all endpoints
-- Email notifications for KYC approval/rejection
-- CPF format and checksum validation
+✅ **Sprint 1**: KYC Submission, S3 Uploads, Audit Logging  
+✅ **Sprint 2**: Admin Approval/Rejection Workflow  
+✅ **Sprint 3**: Rate Limiting, CPF Validation, Email Notifications
+
+## Future Enhancements (Sprint 4+)
+
+- Admin dashboard with statistics and metrics
+- Enhanced document verification (AI/OCR)
 - Document URL validation
 - Implement field-level encryption for PII
 - Order processing and Stripe payments with escrow
