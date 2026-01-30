@@ -2,14 +2,14 @@
 
 ## Overview
 
-Sprint 6 introduces **temporal balance release** and a comprehensive **dispute resolution system** to protect both buyers and sellers. Additionally, Brazilian payment providers (PagSeguro and MercadoPago) are integrated with a provider pattern architecture, making the platform truly adaptable to Brazilian market needs.
+Sprint 6 introduces **temporal balance release** and a comprehensive **dispute resolution system** to protect both buyers and sellers. The platform uses **PagSeguro** as the exclusive payment provider, offering native Brazilian payment methods including PIX, Boleto, and local credit cards.
 
 ### Key Innovations
 
 1. **Temporal Balance Release (72h)**: Funds automatically release to seller's available balance after 72 hours, **independent of order completion**
 2. **Dispute System**: Comprehensive dispute handling that blocks withdrawals but **does not block balance release**
-3. **Brazilian Payment Providers**: PagSeguro and MercadoPago support with PIX, Boleto, and local payment methods
-4. **Provider Pattern Architecture**: Pluggable payment providers for easy multi-provider support
+3. **PagSeguro Integration**: Native Brazilian payment methods with PIX instant payments, Boleto bank slips, and local credit cards
+4. **Market Leader**: PagSeguro is Brazil's most trusted payment processor with extensive merchant and consumer adoption
 5. **Scheduled Jobs**: Automated balance release system running periodically
 
 ## Temporal Balance Release System
@@ -310,37 +310,25 @@ DISPUTE_WINDOW_DAYS=14  # Shorter window (2 weeks)
 DISPUTE_WINDOW_DAYS=60  # Longer window (2 months)
 ```
 
-## Brazilian Payment Providers
+## PagSeguro Payment Provider
 
-### Provider Pattern Architecture
+### Overview
 
-Sprint 6 introduces a **provider pattern** for payment processing, allowing easy integration of multiple payment gateways.
+Sprint 6 integrates **PagSeguro** as the exclusive payment provider, offering complete Brazilian payment method support. PagSeguro is the market leader in Brazil with the highest merchant and consumer adoption.
 
-**File**: `src/services/providers/payment-provider.interface.ts`
+**File**: `src/services/pagseguro.provider.ts`
 
-```typescript
-interface IPaymentProvider {
-  getName(): string;
-  processPayment(amount, currency, metadata): Promise<PaymentResult>;
-  createTransfer(amount, bankInfo, metadata): Promise<TransferResult>;
-  handleWebhook(body, signature?): Promise<WebhookResult>;
-  getStatus(id): Promise<StatusResult>;
-  verifyWebhook(body, signature): boolean;
-}
-```
+### Why PagSeguro?
 
-### Supported Providers
+- 🇧🇷 **Brazilian Market Leader**: Most trusted payment processor in Brazil
+- ⚡ **PIX Instant Payments**: Real-time transfers 24/7
+- 🧾 **Boleto Support**: Traditional Brazilian bank slip payments
+- 💳 **Local Credit Cards**: Full support for Brazilian credit cards
+- 📱 **Mobile Optimized**: Seamless mobile payment experience
+- 🔒 **Security**: PCI-DSS compliant with fraud protection
+- 💰 **Competitive Fees**: Lower transaction costs for Brazilian merchants
 
-#### 1. Stripe (International)
-- **Use Case**: Global payments, credit cards
-- **Configuration**: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`
-- **Features**: Full marketplace support, Connect accounts
-
-#### 2. PagSeguro (Brazil)
-- **Use Case**: Brazilian market, PIX, Boleto
-- **Configuration**: `PAGSEGURO_EMAIL`, `PAGSEGURO_TOKEN`, `PAGSEGURO_SANDBOX`
-- **Features**: PIX instant payments, Boleto (bank slip), Brazilian credit cards
-- **API**: REST API v4
+### Configuration
 
 **Environment Variables:**
 ```env
@@ -348,6 +336,14 @@ PAGSEGURO_EMAIL=your-email@example.com
 PAGSEGURO_TOKEN=your_pagseguro_token
 PAGSEGURO_SANDBOX=true  # Use sandbox for testing
 ```
+
+### Payment Methods
+
+#### 1. PIX (Instant Transfer)
+- **Speed**: Instant confirmation (seconds)
+- **Availability**: 24/7 including weekends
+- **Cost**: Lowest transaction fees
+- **User Experience**: QR code or copy-paste key
 
 **PIX Payment Example:**
 ```javascript
@@ -366,75 +362,19 @@ PAGSEGURO_SANDBOX=true  # Use sandbox for testing
 }
 ```
 
-#### 3. MercadoPago (Latin America)
-- **Use Case**: Brazil, Argentina, Mexico, etc.
-- **Configuration**: `MERCADOPAGO_ACCESS_TOKEN`, `MERCADOPAGO_PUBLIC_KEY`
-- **Features**: PIX, local credit cards, installments
-- **API**: Checkout Preferences API
+#### 2. Boleto (Bank Slip)
+- **Processing**: 1-3 business days
+- **Access**: Payable at any bank or lottery outlet
+- **Popular**: Preferred by users without credit cards
 
-**Environment Variables:**
-```env
-MERCADOPAGO_ACCESS_TOKEN=APP_USR-your_access_token
-MERCADOPAGO_PUBLIC_KEY=APP_USR-your_public_key
-```
+#### 3. Brazilian Credit Cards
+- **Brands**: Visa, Mastercard, Elo, Hipercard
+- **Installments**: Support for parcelamento (installment payments)
+- **Security**: 3D Secure authentication
 
-**Payment Preference Example:**
-```javascript
-// MercadoPago creates payment preference
-{
-  items: [{
-    title: "Product Name",
-    unit_price: 100.00,
-    currency_id: "BRL"
-  }],
-  payment_methods: {
-    default_payment_method_id: "pix"
-  },
-  external_reference: "order_123"
-}
-```
+### Withdrawal Methods
 
-### Provider Factory
-
-**File**: `src/services/providers/provider-factory.ts`
-
-**Usage:**
-```typescript
-import { getPaymentProvider, getWithdrawalProvider } from './providers/provider-factory';
-
-// For customer payments (buy products)
-const paymentProvider = getPaymentProvider();
-await paymentProvider.processPayment(100, 'BRL', {...});
-
-// For seller withdrawals (payouts)
-const withdrawalProvider = getWithdrawalProvider();
-await withdrawalProvider.createTransfer(100, bankInfo, {...});
-```
-
-**Configuration:**
-```env
-# Use Stripe for payments, PagSeguro for withdrawals
-PAYMENT_PROVIDER=stripe
-WITHDRAWAL_PROVIDER=pagseguro
-
-# Or use MercadoPago for both
-PAYMENT_PROVIDER=mercadopago
-WITHDRAWAL_PROVIDER=mercadopago
-
-# Or use PagSeguro for everything
-PAYMENT_PROVIDER=pagseguro
-WITHDRAWAL_PROVIDER=pagseguro
-```
-
-**Benefits:**
-- ✅ Single interface for all providers
-- ✅ Easy to switch providers via environment variables
-- ✅ Different providers for payments vs withdrawals
-- ✅ No code changes needed to add new providers
-
-### Bank Info Support
-
-**PIX Transfer Example:**
+**PIX Transfer (Recommended):**
 ```typescript
 const bankInfo: BankInfo = {
   account_type: "PIX",
@@ -443,10 +383,10 @@ const bankInfo: BankInfo = {
   account_holder_document: "12345678900"  // CPF
 };
 
-await provider.createTransfer(100, bankInfo, { seller_id: "seller-123" });
+await pagseguroProvider.createTransfer(100, bankInfo, { seller_id: "seller-123" });
 ```
 
-**Bank Transfer Example:**
+**Bank Transfer:**
 ```typescript
 const bankInfo: BankInfo = {
   account_type: "BANK_TRANSFER",
@@ -456,8 +396,19 @@ const bankInfo: BankInfo = {
   account_holder_document: "12345678900"
 };
 
-await provider.createTransfer(100, bankInfo, { seller_id: "seller-123" });
+await pagseguroProvider.createTransfer(100, bankInfo, { seller_id: "seller-123" });
 ```
+
+### API Integration
+
+PagSeguro uses REST API v4 with webhook support for real-time payment notifications.
+
+**Benefits:**
+- ✅ Native Brazilian payment methods
+- ✅ Real-time payment confirmation
+- ✅ Lower fees compared to international processors
+- ✅ Built-in fraud detection
+- ✅ Comprehensive reporting and reconciliation
 
 ## API Endpoints (6 New)
 
@@ -611,13 +562,9 @@ Query: ?status=OPEN&limit=50&offset=0
 |----------|-------------|---------|----------|
 | `BALANCE_RELEASE_HOURS` | Hours before auto-release | `72` | No |
 | `DISPUTE_WINDOW_DAYS` | Days to open dispute | `30` | No |
-| `PAYMENT_PROVIDER` | Payment provider name | `stripe` | No |
-| `WITHDRAWAL_PROVIDER` | Withdrawal provider name | `stripe` | No |
-| `PAGSEGURO_EMAIL` | PagSeguro account email | - | If using PagSeguro |
-| `PAGSEGURO_TOKEN` | PagSeguro API token | - | If using PagSeguro |
+| `PAGSEGURO_EMAIL` | PagSeguro account email | - | Yes |
+| `PAGSEGURO_TOKEN` | PagSeguro API token | - | Yes |
 | `PAGSEGURO_SANDBOX` | Use sandbox mode | `true` | No |
-| `MERCADOPAGO_ACCESS_TOKEN` | MercadoPago access token | - | If using MercadoPago |
-| `MERCADOPAGO_PUBLIC_KEY` | MercadoPago public key | - | If using MercadoPago |
 
 ### Complete `.env` Example
 
@@ -641,22 +588,10 @@ BALANCE_RELEASE_HOURS=72
 # Dispute System
 DISPUTE_WINDOW_DAYS=30
 
-# Payment Providers
-PAYMENT_PROVIDER=mercadopago
-WITHDRAWAL_PROVIDER=pagseguro
-
-# Stripe (if using)
-STRIPE_SECRET_KEY=sk_test_...
-STRIPE_WEBHOOK_SECRET=whsec_...
-
-# PagSeguro (if using)
+# PagSeguro Payment Provider
 PAGSEGURO_EMAIL=your-email@example.com
 PAGSEGURO_TOKEN=your_token
 PAGSEGURO_SANDBOX=true
-
-# MercadoPago (if using)
-MERCADOPAGO_ACCESS_TOKEN=APP_USR-...
-MERCADOPAGO_PUBLIC_KEY=APP_USR-...
 
 # Email (optional)
 SMTP_HOST=smtp.gmail.com
@@ -827,10 +762,8 @@ POST /products
 }
 ```
 
-**5. Buyer Purchases (via MercadoPago PIX)**
+**5. Buyer Purchases (via PagSeguro PIX)**
 ```bash
-# Environment: PAYMENT_PROVIDER=mercadopago
-
 POST /payments/create-intent
 {
   "amount": 49.90,
@@ -842,8 +775,8 @@ POST /payments/create-intent
 }
 
 # Response includes PIX QR code
-# Buyer scans and pays instantly
-# Webhook confirms payment
+# Buyer scans and pays instantly (seconds)
+# PagSeguro webhook confirms payment
 ```
 
 **6. Funds Go to Pending**
@@ -861,10 +794,8 @@ available_balance += R$49.90
 pending_balance -= R$49.90
 ```
 
-**8. Seller Withdraws (via PagSeguro PIX)**
+**8. Seller Withdraws (via PIX)**
 ```bash
-# Environment: WITHDRAWAL_PROVIDER=pagseguro
-
 POST /seller/withdraw
 {
   "amount": 49.90,
@@ -880,7 +811,7 @@ POST /seller/withdraw
 POST /admin/withdrawals/:id/approve
 
 # PagSeguro processes PIX transfer
-# Funds arrive in seller's bank instantly
+# Funds arrive in seller's bank instantly (24/7)
 ```
 
 ## Testing Checklist
@@ -906,17 +837,17 @@ POST /admin/withdrawals/:id/approve
 - [ ] Verify temporal release still works with active disputes
 - [ ] Close dispute and verify withdrawal unblocked
 
-### Payment Providers
-- [ ] Configure Stripe provider
-- [ ] Configure PagSeguro provider
-- [ ] Configure MercadoPago provider
-- [ ] Process payment with each provider
-- [ ] Create transfer/payout with each provider
-- [ ] Handle webhooks from each provider
-- [ ] Test PIX transfers (PagSeguro & MercadoPago)
+### PagSeguro Integration
+- [ ] Configure PagSeguro credentials
+- [ ] Process PIX payment
+- [ ] Process Boleto payment
+- [ ] Process credit card payment
+- [ ] Create PIX transfer/payout
+- [ ] Handle PagSeguro webhooks
+- [ ] Test PIX instant confirmation
+- [ ] Test Boleto generation
 - [ ] Test bank transfers
-- [ ] Switch providers via environment variables
-- [ ] Test different providers for payments vs withdrawals
+- [ ] Verify sandbox mode
 
 ### Integration Tests
 - [ ] End-to-end: Payment → Temporal Release → Withdrawal
@@ -937,20 +868,20 @@ POST /admin/withdrawals/:id/approve
 - ✅ Dispute window validation (30 days)
 - ✅ Active disputes block withdrawals
 - ✅ Disputes do NOT block balance release
-- ✅ PagSeguro provider integration
-- ✅ MercadoPago provider integration
-- ✅ Provider pattern architecture
-- ✅ PIX support for both providers
-- ✅ Provider factory for easy switching
+- ✅ PagSeguro payment integration
+- ✅ PIX instant payment support
+- ✅ Boleto bank slip support
+- ✅ Brazilian credit card support
+- ✅ Native Brazilian payment methods
 - ✅ Complete documentation
 
 ### Statistics
 - **New Endpoints**: 6 (dispute management)
 - **Total Endpoints**: 56 (was 50 in Sprint 5)
 - **New Models**: 1 (Dispute)
-- **New Services**: 3 (DisputeService, scheduled/balance-release, provider implementations)
-- **New Providers**: 2 (PagSeguro, MercadoPago)
-- **Environment Variables**: 9 new
+- **New Services**: 3 (DisputeService, scheduled/balance-release, PagSeguro integration)
+- **Payment Provider**: PagSeguro (PIX, Boleto, Credit Cards)
+- **Environment Variables**: 3 new (PagSeguro configuration)
 
 ### Files Created/Modified
 **New Files:**
@@ -958,10 +889,7 @@ POST /admin/withdrawals/:id/approve
 - `src/services/dispute.ts` - Dispute service
 - `src/api/disputes.ts` - Dispute API routes
 - `src/services/scheduled/balance-release.ts` - Scheduled job
-- `src/services/providers/pagseguro.provider.ts` - PagSeguro provider
-- `src/services/providers/mercadopago.provider.ts` - MercadoPago provider
-- `src/services/providers/provider-factory.ts` - Provider factory
-- `src/services/providers/payment-provider.interface.ts` - Provider interface
+- `src/services/pagseguro.provider.ts` - PagSeguro payment integration
 
 **Modified Files:**
 - `src/services/ledger.ts` - Added temporal release logic
@@ -982,9 +910,10 @@ POST /admin/withdrawals/:id/approve
 - ✅ Internal ledger system
 - ✅ Temporal balance release
 - ✅ Dispute resolution
-- ✅ PIX payments (instant)
-- ✅ PagSeguro & MercadoPago support
-- ✅ Multi-provider architecture
+- ✅ PIX instant payments (24/7)
+- ✅ Boleto bank slip support
+- ✅ Brazilian credit cards
+- ✅ PagSeguro integration (market leader)
 - ✅ 56 API endpoints
 - ✅ 8 services
 - ✅ 8 database models

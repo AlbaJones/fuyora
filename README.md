@@ -39,8 +39,8 @@ MedusaJS-based C2C marketplace backend with complete KYC workflow, multi-level a
 ### Sprint 6 - Temporal Release & Disputes 🆕
 - **Temporal Balance Release**: Automatic 72h fund release (independent of order completion)
 - **Dispute System**: Complete dispute resolution (open → respond → admin resolve)
-- **Brazilian Payment Providers**: PagSeguro and MercadoPago with PIX support
-- **Provider Pattern**: Pluggable payment architecture for multi-provider support
+- **PagSeguro Integration**: Brazil's market leader for payments with PIX, Boleto, and credit cards
+- **Native Brazilian Payments**: PIX instant transfers (24/7), Boleto bank slips, local credit cards
 - **Scheduled Jobs**: Automated balance release system
 - **Dispute Protection**: Disputes block withdrawals but NOT balance release
 
@@ -60,7 +60,7 @@ MedusaJS-based C2C marketplace backend with complete KYC workflow, multi-level a
 - PostgreSQL
 - Redis
 - S3-compatible storage (AWS S3, MinIO, etc.)
-- Stripe account (for payments)
+- PagSeguro account (for payments)
 
 ### Installation
 
@@ -86,6 +86,11 @@ AWS_S3_BUCKET=fuyora-uploads
 AWS_S3_ENDPOINT=https://s3.amazonaws.com
 PRESIGN_TTL_SECONDS=900
 MAX_UPLOAD_BYTES=10000000
+
+# PagSeguro Payment Provider
+PAGSEGURO_EMAIL=your-email@example.com
+PAGSEGURO_TOKEN=your_pagseguro_token
+PAGSEGURO_SANDBOX=true
 ```
 
 5. Build the project:
@@ -297,7 +302,7 @@ Reject a KYC submission with reason.
 #### GET /admin/dashboard/stats
 Get overall platform statistics.
 
-**Authentication**: Required (****** with admin role)
+**Authentication**: Required (Bearer token with admin role)
 
 **Response**:
 ```json
@@ -314,7 +319,7 @@ Get overall platform statistics.
 #### GET /admin/dashboard/kyc-metrics
 Get detailed KYC metrics by status and level.
 
-**Authentication**: Required (****** with admin role)
+**Authentication**: Required (Bearer token with admin role)
 
 **Response**:
 ```json
@@ -338,7 +343,7 @@ Get detailed KYC metrics by status and level.
 #### GET /admin/dashboard/recent-activity
 Get recent submissions.
 
-**Authentication**: Required (****** with admin role)
+**Authentication**: Required (Bearer token with admin role)
 
 **Query Parameters**:
 - `limit` (optional): Number of results (default: 10, max: 100)
@@ -346,7 +351,7 @@ Get recent submissions.
 #### GET /admin/kyc/submissions/:id/documents
 Get document URLs for manual viewing.
 
-**Authentication**: Required (****** with admin role)
+**Authentication**: Required (Bearer token with admin role)
 
 **Response**:
 ```json
@@ -370,7 +375,7 @@ Get document URLs for manual viewing.
 #### GET /admin/kyc/level/:level/submissions
 List submissions at specific approval level (1, 2, or 3).
 
-**Authentication**: Required (****** with admin role)
+**Authentication**: Required (Bearer token with admin role)
 
 **Query Parameters**:
 - `page` (optional): Page number (default: 1)
@@ -379,7 +384,7 @@ List submissions at specific approval level (1, 2, or 3).
 #### POST /admin/kyc/submissions/:id/approve-level
 Approve submission at current level.
 
-**Authentication**: Required (****** with admin role)
+**Authentication**: Required (Bearer token with admin role)
 
 **Request Body**:
 ```json
@@ -394,7 +399,7 @@ Approve submission at current level.
 #### POST /admin/kyc/submissions/:id/escalate
 Escalate submission to next approval level.
 
-**Authentication**: Required (****** with admin role)
+**Authentication**: Required (Bearer token with admin role)
 
 **Request Body**:
 ```json
@@ -408,7 +413,7 @@ Maximum level: 3. Returns error if already at level 3.
 #### POST /admin/kyc/submissions/:id/reject-level
 Reject submission at any level.
 
-**Authentication**: Required (****** with admin role)
+**Authentication**: Required (Bearer token with admin role)
 
 **Request Body**:
 ```json
@@ -417,56 +422,36 @@ Reject submission at any level.
 }
 ```
 
-### Stripe Payments
+### PagSeguro Payments
 
-#### POST /seller/stripe-account
-Create Stripe Connect account for seller.
-
-**Authentication**: Required (******
-
-**Request Body**:
-```json
-{
-  "email": "seller@example.com",
-  "country": "BR"
-}
-```
-
-**Response**:
-```json
-{
-  "account_id": "acct_...",
-  "onboarding_url": "https://connect.stripe.com/...",
-  "message": "Stripe account created. Complete onboarding to start selling."
-}
-```
-
-#### GET /seller/stripe-account
-Get seller's Stripe account status.
-
-**Authentication**: Required (******
+PagSeguro is Brazil's leading payment processor, integrated as the exclusive payment provider for Fuyora.
 
 #### POST /payments/create-intent
 Create payment intent for purchase.
 
-**Authentication**: Required (******
+**Authentication**: Required (Bearer token)
 
 **Request Body**:
 ```json
 {
   "amount": 10000,
   "currency": "brl",
-  "seller_id": "user-123",
   "metadata": {
-    "product_id": "prod-456"
+    "product_id": "prod-456",
+    "order_id": "order-123"
   }
 }
 ```
 
 Amount in cents (10000 = R$ 100.00). Platform fee is automatically calculated.
 
-#### POST /webhooks/stripe
-Stripe webhook endpoint (signature verification required).
+**Payment Methods:**
+- **PIX**: Instant payment via QR code (24/7, confirmed in seconds)
+- **Boleto**: Bank slip payment (1-3 business days)
+- **Credit Card**: Brazilian credit cards with installment options
+
+#### POST /webhooks/pagseguro
+PagSeguro webhook endpoint for payment confirmations.
 
 ### Marketplace - Products
 
@@ -698,48 +683,31 @@ Automatic fund release system for seller protection.
 }
 ```
 
-**Scheduled Job Setup:**
-```javascript
-// Run every hour with cron
-import cron from 'node-cron';
-import { scheduleBalanceRelease } from './services/scheduled/balance-release';
+### PagSeguro Payment Integration (Sprint 6)
 
-cron.schedule('0 * * * *', async () => {
-  const manager = getEntityManager();
-  await scheduleBalanceRelease(manager);
-});
-```
+Brazil's leading payment processor with native support for PIX, Boleto, and local credit cards.
 
-See [SPRINT6_SUMMARY.md](./SPRINT6_SUMMARY.md) for complete documentation.
-
-### Brazilian Payment Providers (Sprint 6)
-
-Support for Brazilian payment processors with PIX instant payments.
-
-**Supported Providers:**
-1. **Stripe** - Global payments, credit cards
-2. **PagSeguro** - Brazilian market, PIX, Boleto
-3. **MercadoPago** - Latin America, PIX, installments
+**Why PagSeguro:**
+- 🇧🇷 **Market Leader**: Most trusted payment processor in Brazil
+- ⚡ **PIX Instant**: Real-time payments 24/7 (confirmed in seconds)
+- 🧾 **Boleto**: Traditional bank slip payments (1-3 days)
+- 💳 **Local Cards**: Full Brazilian credit card support with installments
+- 🔒 **Security**: PCI-DSS compliant with built-in fraud protection
+- 💰 **Competitive Fees**: Lower costs compared to international processors
 
 **Configuration:**
 ```env
-# For customer payments
-PAYMENT_PROVIDER=mercadopago
-
-# For seller withdrawals
-WITHDRAWAL_PROVIDER=pagseguro
-
-# PagSeguro credentials
 PAGSEGURO_EMAIL=your-email@example.com
-PAGSEGURO_TOKEN=your_token
-PAGSEGURO_SANDBOX=true
-
-# MercadoPago credentials
-MERCADOPAGO_ACCESS_TOKEN=APP_USR-your_token
-MERCADOPAGO_PUBLIC_KEY=APP_USR-your_key
+PAGSEGURO_TOKEN=your_pagseguro_token
+PAGSEGURO_SANDBOX=true  # Use sandbox for testing
 ```
 
-**PIX Withdrawal Example:**
+**Payment Methods:**
+1. **PIX** - Instant QR code payments (recommended)
+2. **Boleto** - Bank slip for unbanked users
+3. **Credit Card** - Visa, Mastercard, Elo, Hipercard
+
+**Withdrawal via PIX:**
 ```json
 {
   "amount": 100.00,
@@ -752,11 +720,7 @@ MERCADOPAGO_PUBLIC_KEY=APP_USR-your_key
 }
 ```
 
-**Provider Pattern:**
-- ✅ Single interface for all providers
-- ✅ Easy switching via environment variables
-- ✅ Different providers for payments vs withdrawals
-- ✅ No code changes to add new providers
+Withdrawals arrive instantly (24/7) when using PIX.
 
 ## Rate Limiting
 
@@ -906,13 +870,9 @@ Configure SMTP in environment variables (optional - system works without email).
 | `SMTP_FROM` | From email address (optional) | `noreply@fuyora.com` |
 | `BALANCE_RELEASE_HOURS` | Hours before auto-release of funds | `72` |
 | `DISPUTE_WINDOW_DAYS` | Days allowed to open disputes | `30` |
-| `PAYMENT_PROVIDER` | Payment provider (stripe\|pagseguro\|mercadopago) | `stripe` |
-| `WITHDRAWAL_PROVIDER` | Withdrawal provider (stripe\|pagseguro\|mercadopago) | `stripe` |
-| `PAGSEGURO_EMAIL` | PagSeguro account email (if using) | - |
-| `PAGSEGURO_TOKEN` | PagSeguro API token (if using) | - |
-| `PAGSEGURO_SANDBOX` | Use PagSeguro sandbox (if using) | `true` |
-| `MERCADOPAGO_ACCESS_TOKEN` | MercadoPago access token (if using) | - |
-| `MERCADOPAGO_PUBLIC_KEY` | MercadoPago public key (if using) | - |
+| `PAGSEGURO_EMAIL` | PagSeguro account email | - |
+| `PAGSEGURO_TOKEN` | PagSeguro API token | - |
+| `PAGSEGURO_SANDBOX` | Use PagSeguro sandbox | `true` |
 
 **Note**: Email configuration is optional. If not set, the system logs would-send messages instead of sending emails.
 
@@ -921,20 +881,26 @@ Configure SMTP in environment variables (optional - system works without email).
 ### Models
 - `KycSubmission`: Stores KYC submission data with multi-level approval
 - `AuditLog`: Tracks audit events
-- `Payment`: Payment transaction records (Sprint 4)
-- `SellerAccount`: Stripe Connect account info (Sprint 4)
-- `Product`: Product listings (Sprint 5)
-- `Order`: Purchase orders (Sprint 5)
-- `Review`: User reviews and ratings (Sprint 5)
+- `Payment`: Payment transaction records
+- `Product`: Product listings
+- `Order`: Purchase orders
+- `Review`: User reviews and ratings
+- `Dispute`: Dispute resolution (Sprint 6)
+- `SellerBalance`: Internal ledger balances (Sprint 6)
+- `Transaction`: Transaction history (Sprint 6)
+- `Withdrawal`: Withdrawal requests (Sprint 6)
 
 ### Services
 - `KycService`: Handles KYC submission, multi-level approval, rejection, and audit logging
 - `EmailService`: Sends email notifications for KYC events
-- `DashboardService`: Provides statistics and metrics (Sprint 4)
-- `StripeService`: Stripe payment integration (Sprint 4)
-- `ProductService`: Product management (Sprint 5)
-- `OrderService`: Order lifecycle management (Sprint 5)
-- `ReviewService`: Review and rating system (Sprint 5)
+- `DashboardService`: Provides statistics and metrics
+- `PagSeguroService`: PagSeguro payment integration
+- `ProductService`: Product management
+- `OrderService`: Order lifecycle management
+- `ReviewService`: Review and rating system
+- `DisputeService`: Dispute resolution (Sprint 6)
+- `LedgerService`: Internal balance management (Sprint 6)
+- `WithdrawalService`: Withdrawal processing (Sprint 6)
 
 ### Middleware
 - `ensureAuthenticated`: JWT authentication middleware
@@ -954,12 +920,13 @@ Configure SMTP in environment variables (optional - system works without email).
 - Uses PostgreSQL for data storage
 - Redis for caching and event bus
 - S3-compatible storage for file uploads
-- Stripe for payment processing
+- PagSeguro for payment processing (PIX, Boleto, Credit Cards)
 - Complete audit logging for all operations
 - Rate limiting on all endpoints
 - CPF validation for Brazilian users
 - Email notifications (optional)
 - Complete marketplace workflow (products, orders, reviews)
+- Internal ledger system with temporal balance release
 
 ## Sprints Completed
 
@@ -1009,7 +976,7 @@ Detailed sprint documentation:
 - [SPRINT3_SUMMARY.md](./SPRINT3_SUMMARY.md) - Rate Limiting, CPF Validation, Email
 - [SPRINT4_SUMMARY.md](./SPRINT4_SUMMARY.md) - Dashboard, Multi-Level, Stripe Payments
 - [SPRINT5_SUMMARY.md](./SPRINT5_SUMMARY.md) - Products, Orders, Reviews
-- [SPRINT6_SUMMARY.md](./SPRINT6_SUMMARY.md) - Temporal Release, Disputes, Brazilian Providers 🆕
+- [SPRINT6_SUMMARY.md](./SPRINT6_SUMMARY.md) - Temporal Release, Disputes, PagSeguro Integration 🆕
 - [PAYMENT_ARCHITECTURE.md](./PAYMENT_ARCHITECTURE.md) - Internal Ledger System
 
 ## Future Enhancements (Sprint 7+)

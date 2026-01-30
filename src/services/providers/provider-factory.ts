@@ -1,89 +1,52 @@
 import { IPaymentProvider } from "./payment-provider.interface";
-import { StripeProvider } from "./stripe.provider";
 import { PagSeguroProvider } from "./pagseguro.provider";
-import { MercadoPagoProvider } from "./mercadopago.provider";
 
 /**
- * Provider type enum
- */
-export enum ProviderType {
-  STRIPE = "stripe",
-  PAGSEGURO = "pagseguro",
-  MERCADOPAGO = "mercadopago",
-}
-
-/**
- * Factory to create payment providers based on environment configuration
+ * Payment provider factory - PagSeguro only
+ * PagSeguro is the Brazilian market leader with native PIX and Boleto support
  */
 export class ProviderFactory {
-  private static paymentProviderInstance: IPaymentProvider | null = null;
-  private static withdrawalProviderInstance: IPaymentProvider | null = null;
+  private static providerInstance: IPaymentProvider | null = null;
 
   /**
-   * Get payment provider instance (for processing customer payments)
+   * Get PagSeguro provider instance
+   * Used for both payments and withdrawals
+   */
+  static getProvider(): IPaymentProvider {
+    if (!this.providerInstance) {
+      try {
+        this.providerInstance = new PagSeguroProvider();
+      } catch (error) {
+        console.error("Failed to initialize PagSeguro provider:", error);
+        throw new Error(
+          `Failed to initialize PagSeguro: ${
+            error instanceof Error ? error.message : String(error)
+          }`
+        );
+      }
+    }
+    return this.providerInstance;
+  }
+
+  /**
+   * Get payment provider (alias for getProvider)
    */
   static getPaymentProvider(): IPaymentProvider {
-    if (!this.paymentProviderInstance) {
-      const providerName = (
-        process.env.PAYMENT_PROVIDER || "stripe"
-      ).toLowerCase();
-      this.paymentProviderInstance = this.createProvider(providerName);
-    }
-    return this.paymentProviderInstance;
+    return this.getProvider();
   }
 
   /**
-   * Get withdrawal provider instance (for seller payouts)
+   * Get withdrawal provider (alias for getProvider)
    */
   static getWithdrawalProvider(): IPaymentProvider {
-    if (!this.withdrawalProviderInstance) {
-      const providerName = (
-        process.env.WITHDRAWAL_PROVIDER || "stripe"
-      ).toLowerCase();
-      this.withdrawalProviderInstance = this.createProvider(providerName);
-    }
-    return this.withdrawalProviderInstance;
+    return this.getProvider();
   }
 
   /**
-   * Create a provider instance based on provider name
-   */
-  private static createProvider(providerName: string): IPaymentProvider {
-    try {
-      switch (providerName) {
-        case ProviderType.STRIPE:
-          return new StripeProvider();
-        case ProviderType.PAGSEGURO:
-          return new PagSeguroProvider();
-        case ProviderType.MERCADOPAGO:
-          return new MercadoPagoProvider();
-        default:
-          console.error(
-            `Unknown payment provider "${providerName}". Valid options are: stripe, pagseguro, mercadopago`
-          );
-          throw new Error(
-            `Unknown payment provider "${providerName}". Please check PAYMENT_PROVIDER or WITHDRAWAL_PROVIDER environment variable.`
-          );
-      }
-    } catch (error) {
-      console.error(
-        `Failed to initialize provider "${providerName}":`,
-        error
-      );
-      throw new Error(
-        `Failed to initialize payment provider "${providerName}": ${
-          error instanceof Error ? error.message : String(error)
-        }`
-      );
-    }
-  }
-
-  /**
-   * Reset provider instances (useful for testing)
+   * Reset provider instance (useful for testing)
    */
   static reset(): void {
-    this.paymentProviderInstance = null;
-    this.withdrawalProviderInstance = null;
+    this.providerInstance = null;
   }
 }
 
@@ -96,4 +59,8 @@ export function getPaymentProvider(): IPaymentProvider {
 
 export function getWithdrawalProvider(): IPaymentProvider {
   return ProviderFactory.getWithdrawalProvider();
+}
+
+export function getProvider(): IPaymentProvider {
+  return ProviderFactory.getProvider();
 }

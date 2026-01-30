@@ -1,72 +1,44 @@
-# Payment Architecture Restructure
+# Payment Architecture - Internal Ledger with PagSeguro
 
 ## Overview
 
-This document describes the complete restructure of the payment system from **Stripe Connect** (seller accounts) to **Internal Ledger** (platform-controlled funds).
+This document describes the payment system architecture using an **Internal Ledger** (platform-controlled funds) with **PagSeguro** as the exclusive payment provider for Brazilian payment methods.
 
-## Why the Change?
-
-### Problems with Stripe Connect
-- ❌ Sellers need Stripe accounts (friction in onboarding)
-- ❌ Platform has less control over funds
-- ❌ Difficult to implement custom business rules
-- ❌ Hard to delay payouts for risk management
-- ❌ Limited dispute resolution capabilities
-- ❌ Complex reconciliation
-- ❌ Doesn't support Brazilian payment methods well
+## Why Internal Ledger + PagSeguro?
 
 ### Benefits of Internal Ledger
 - ✅ Platform has full control over all funds
-- ✅ No Stripe account needed for sellers (simpler onboarding)
+- ✅ No seller payment accounts needed (simpler onboarding)
 - ✅ Can implement any business rules
 - ✅ Easy to delay payouts (risk management)
 - ✅ Better dispute handling (hold/release funds)
 - ✅ Complete audit trail
-- ✅ Support Brazilian methods (PIX, bank transfer)
 - ✅ Better cash flow management
 
-## Architecture Comparison
+### Why PagSeguro?
+- 🇧🇷 **Market Leader**: Brazil's most trusted payment processor
+- ⚡ **PIX Instant**: Real-time payments 24/7 (confirmed in seconds)
+- 🧾 **Boleto Support**: Traditional bank slip payments
+- 💳 **Local Credit Cards**: Full Brazilian credit card support
+- 🔒 **Security**: PCI-DSS compliant with fraud protection
+- 💰 **Lower Fees**: Competitive rates for Brazilian merchants
+- 📱 **Mobile Optimized**: Seamless mobile payment experience
 
-### OLD: Stripe Connect
+## Architecture
 
-```
-┌──────────┐
-│ Customer │
-└────┬─────┘
-     │ Payment
-     ▼
-┌─────────────┐
-│   Stripe    │──────────┐
-└─────────────┘          │
-     │                   │ Platform Fee
-     │ 90%               │ 10%
-     ▼                   ▼
-┌──────────────┐   ┌──────────┐
-│Seller Stripe │   │ Platform │
-│   Account    │   │          │
-└──────────────┘   └──────────┘
-     │
-     │ Automatic
-     ▼
-┌──────────┐
-│  Seller  │
-│   Bank   │
-└──────────┘
-```
-
-### NEW: Internal Ledger
+### Payment Flow with PagSeguro
 
 ```
 ┌──────────┐
 │ Customer │
 └────┬─────┘
-     │ Payment (100%)
+     │ Payment (PIX/Boleto/Card)
      ▼
 ┌──────────────────┐
-│ Platform Stripe  │
-│     Account      │
+│   PagSeguro      │
+│ Platform Account │
 └────────┬─────────┘
-         │
+         │ 100% of payment
          ▼
 ┌──────────────────┐
 │ Internal Ledger  │
@@ -86,10 +58,10 @@ This document describes the complete restructure of the payment system from **St
          │
          ▼
 ┌──────────────────┐
-│ Stripe Transfer  │
-│  or Bank API     │
+│ PagSeguro        │
+│ Transfer (PIX)   │
 └────────┬─────────┘
-         │ 2 business days
+         │ Instant (PIX) or 1-3 days
          ▼
 ┌──────────┐
 │  Seller  │
@@ -99,10 +71,7 @@ This document describes the complete restructure of the payment system from **St
 
 ## Database Schema
 
-### Dropped Tables
-- `seller_account` - No longer needed (no Stripe Connect)
-
-### New Tables
+### Tables
 
 #### `seller_balance`
 Tracks internal balance for each seller.
@@ -178,7 +147,7 @@ CREATE TABLE withdrawal (
 **Withdrawal Statuses**:
 - `PENDING` - Requested by seller
 - `APPROVED` - Approved by admin
-- `PROCESSING` - Being processed
+- `PROCESSING` - Being processed via PagSeguro
 - `COMPLETED` - Successfully transferred
 - `FAILED` - Transfer failed
 - `CANCELLED` - Cancelled
@@ -187,7 +156,7 @@ CREATE TABLE withdrawal (
 ```json
 {
   "account_type": "PIX | BANK_TRANSFER",
-  "pix_key": "user@email.com",              // For PIX
+  "pix_key": "user@email.com",              // For PIX (recommended)
   "bank_code": "001",                        // For bank transfer
   "account_number": "12345-6",
   "account_holder_name": "João Silva",
@@ -198,7 +167,8 @@ CREATE TABLE withdrawal (
 ### Modified Tables
 
 #### `payment`
-- Removed: Stripe Connect references
+- Simplified to work with PagSeguro
+- Removed: Payment processor specific fields
 - Changed: `seller_amount` → `seller_net_amount` (clearer naming)
 - Kept: `platform_fee`, `seller_net_amount`
 
@@ -224,8 +194,8 @@ POST /payments/create-intent
 ```
 
 **What happens**:
-- Payment goes to platform Stripe account
-- NO transfer to seller
+- Payment processed by PagSeguro (PIX, Boleto, or Credit Card)
+- Funds go to platform PagSeguro account
 - Platform fee (10%) calculated
 - Payment record created in database
 
@@ -313,21 +283,21 @@ POST /admin/withdrawals/:id/process
    total_withdrawn += amount
    ```
 
-2. Call Stripe/Bank API:
+2. Call PagSeguro API (PIX transfer):
    ```typescript
-   // StripeService.createTransfer()
-   // Or Brazilian payment provider API
+   // PagSeguroService.createTransfer()
+   // Instant PIX transfer to seller's PIX key
    ```
 
 3. Update withdrawal:
    ```
    status: PROCESSING → COMPLETED
-   stripe_transfer_id: "tr_..."
+   pagseguro_transfer_id: "TR123..."
    processed_by: admin_user_id
    completed_at: timestamp
    ```
 
-4. Funds arrive in 2 business days
+4. Funds arrive instantly (PIX) or 1-3 days (bank transfer)
 
 ## API Endpoints
 
@@ -440,56 +410,50 @@ Manages withdrawal lifecycle.
 **Key Methods**:
 - `requestWithdrawal(sellerId, amount, bankInfo)` - Seller requests
 - `approveWithdrawal(withdrawalId, adminId)` - Admin approves
-- `processWithdrawal(withdrawalId, adminId)` - Process via Stripe
+- `processWithdrawal(withdrawalId, adminId)` - Process via PagSeguro
 - `cancelWithdrawal(withdrawalId, reason, userId)` - Cancel
 - `getSellerWithdrawals(sellerId)` - List seller withdrawals
 - `getAllWithdrawals(status)` - Admin list all
 
-### StripeService
+### PagSeguroService
 
-**Updated**:
-- Removed: `createConnectedAccount()`, `createAccountLink()`, `getAccount()`
-- Updated: `createPaymentIntent()` - No destination, platform account only
-- Added: `createTransfer()` - For withdrawal processing
+Handles all PagSeguro payment operations.
 
-**Note**: `createTransfer()` is currently a mock. In production, integrate with:
-- Brazilian payment providers (PagSeguro, MercadoPago, PicPay) for PIX
-- Stripe Payouts for international transfers
-- Bank transfer APIs for direct bank transfers
+**Key Methods**:
+- `createPaymentOrder(amount, metadata)` - Create PIX/Boleto/Card payment
+- `createTransfer(amount, bankInfo)` - PIX or bank transfer to seller
+- `handleWebhook(body, signature)` - Process payment confirmations
+- `getPaymentStatus(orderId)` - Check payment status
+- `verifyWebhookSignature(body, signature)` - Validate webhooks
+
+**Payment Methods Supported**:
+- PIX (instant, recommended)
+- Boleto (1-3 business days)
+- Credit Card (with installments)
 
 ## Environment Variables
 
 ### Added
 ```bash
 MIN_WITHDRAWAL_AMOUNT=10  # Minimum withdrawal in BRL
-```
-
-### Removed
-```bash
-TEST_SELLER_ACCOUNT_ID=...  # No longer needed
-```
-
-### Kept
-```bash
-STRIPE_SECRET_KEY=sk_...
-STRIPE_WEBHOOK_SECRET=whsec_...
-PLATFORM_FEE_PERCENTAGE=10
+PAGSEGURO_EMAIL=your-email@example.com
+PAGSEGURO_TOKEN=your_pagseguro_token
+PAGSEGURO_SANDBOX=true
 ```
 
 ## Migration
 
-Run migration to restructure database:
+Run migration to set up the internal ledger system:
 
 ```bash
 npm run migrations:run
 ```
 
 This will:
-1. Drop `seller_account` table
-2. Create `seller_balance` table
-3. Create `transaction` table
-4. Create `withdrawal` table
-5. Rename `payment.seller_amount` → `payment.seller_net_amount`
+1. Create `seller_balance` table
+2. Create `transaction` table
+3. Create `withdrawal` table
+4. Update `payment` table schema
 
 ## Integration with Order Service
 
@@ -623,13 +587,14 @@ curl -X POST -H "Authorization: Bearer $ADMIN_TOKEN" \
 
 ## Future Enhancements
 
-1. **Automatic Withdrawals**: Option for sellers to enable auto-withdrawal
-2. **Withdrawal Schedules**: Weekly/monthly automatic withdrawals
-3. **Multi-Currency**: Support USD, EUR, etc.
-4. **Real Brazilian Integration**: Integrate with PagSeguro/MercadoPago for PIX
-5. **Withdrawal Fees**: Charge fee for withdrawals (if needed)
-6. **Balance Forecasting**: Predict when seller can withdraw based on pending
-7. **Withdrawal Batching**: Process multiple withdrawals in batch
+1. **Automatic Withdrawals**: Option for sellers to enable auto-withdrawal via PIX
+2. **Withdrawal Schedules**: Weekly/monthly automatic PIX withdrawals
+3. **Multi-Currency**: Support USD, EUR, etc. (if expanding beyond Brazil)
+4. **Boleto Auto-confirmation**: Automatic confirmation when Boleto is paid
+5. **Installment Payments**: Support parcelamento (installments) for credit cards
+6. **Withdrawal Fees**: Optional fee for instant PIX withdrawals
+7. **Balance Forecasting**: Predict when seller can withdraw based on pending
+8. **Withdrawal Batching**: Process multiple PIX transfers in batch
 
 ## Support
 

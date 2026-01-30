@@ -28,7 +28,6 @@
     "uuid": "^9.0.0",
     "express-rate-limit": "^7.1.5",
     "nodemailer": "^6.9.8",
-    "stripe": "^14.10.0",
     "axios": "^1.6.0"
   },
   "devDependencies": {

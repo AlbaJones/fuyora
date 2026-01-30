@@ -78,7 +78,7 @@
 **Endpoints**: +15
 
 ### ✅ Payment Architecture Restructure (Completed)
-**Focus**: Replace Stripe Connect with internal ledger
+**Focus**: Replace complex payment provider patterns with internal ledger
 
 **Deliverables**:
 - Internal ledger system (3 new models)
@@ -92,18 +92,34 @@
 **Migration**: Complete restructure
 
 **Key Change**:
-- ❌ Removed: Stripe Connect (seller accounts)
 - ✅ Added: Platform-controlled ledger system
+- ✅ Simplified: Single payment provider (PagSeguro)
+
+### ✅ Sprint 6 - Temporal Release & Disputes (Completed)
+**Focus**: Temporal balance release, disputes, PagSeguro integration
+
+**Deliverables**:
+- Temporal balance release (72h automatic)
+- Comprehensive dispute system
+- PagSeguro payment integration
+- PIX instant payments (24/7)
+- Boleto bank slip support
+- Brazilian credit card support
+- Scheduled jobs for auto-release
+
+**Files**: +4  
+**Endpoints**: +6  
+**Payment Provider**: PagSeguro only
 
 ## Final Statistics
 
 ### Codebase
 - **Total TypeScript Files**: 28
 - **Total Lines of Code**: ~5,400
-- **Models**: 7 database tables
-- **Services**: 8 business logic services
-- **API Endpoints**: 44 total
-- **Migrations**: 5
+- **Models**: 10 database tables
+- **Services**: 10 business logic services
+- **API Endpoints**: 56 total
+- **Migrations**: 6
 
 ### API Endpoints Breakdown
 
@@ -151,7 +167,15 @@
 
 **Payments (2)**:
 - POST /payments/create-intent
-- POST /webhooks/stripe
+- POST /webhooks/pagseguro
+
+**Disputes (6)**:
+- POST /disputes
+- GET /disputes/:id
+- GET /buyer/disputes
+- GET /seller/disputes
+- POST /disputes/:id/respond
+- POST /admin/disputes/:id/resolve
 
 **Withdrawals (9)**:
 - GET /seller/balance
@@ -170,20 +194,21 @@
 - POST /admin/kyc/submissions/:id/escalate
 - POST /admin/kyc/submissions/:id/reject-level
 
-**Total: 44 endpoints**
+**Total: 56 endpoints**
 
 ### Database Schema
 
-**7 Tables**:
+**10 Tables**:
 1. `kyc_submission` - KYC data and documents
 2. `audit_log` - Complete audit trail
 3. `payment` - Payment records
 4. `product` - Product listings
 5. `order` - Order tracking
 6. `review` - User reviews
-7. `seller_balance` - Internal ledger (NEW)
-8. `transaction` - Ledger entries (NEW)
-9. `withdrawal` - Withdrawal requests (NEW)
+7. `dispute` - Dispute resolution (Sprint 6)
+8. `seller_balance` - Internal ledger balances
+9. `transaction` - Transaction history (immutable)
+10. `withdrawal` - Withdrawal requests
 
 ### Key Features
 
@@ -206,8 +231,9 @@
 - Immutable transaction ledger
 - Withdrawal requests
 - Admin approval workflow
-- 2-day processing time
-- Support for PIX and bank transfers
+- PagSeguro integration for PIX transfers
+- Instant PIX withdrawals (24/7)
+- Support for bank transfers
 
 #### Products & Orders
 - Product listing and management
@@ -266,6 +292,7 @@
 ### Payment
 - **Stripe** - Payment processing
 - **Internal Ledger** - Balance management
+- **PagSeguro** - Brazilian payment methods (PIX, Boleto, Credit Cards)
 
 ### Email
 - **Nodemailer** - Email delivery
@@ -290,8 +317,8 @@ JWT_SECRET=your-secret-key
 AWS_ACCESS_KEY_ID=your-key
 AWS_SECRET_ACCESS_KEY=your-secret
 AWS_S3_BUCKET=fuyora-uploads
-STRIPE_SECRET_KEY=sk_test_...
-STRIPE_WEBHOOK_SECRET=whsec_...
+PAGSEGURO_EMAIL=your-email@example.com
+PAGSEGURO_TOKEN=your_pagseguro_token
 ```
 
 ### Optional
@@ -306,6 +333,9 @@ PLATFORM_FEE_PERCENTAGE=10
 MIN_WITHDRAWAL_AMOUNT=10
 PRESIGN_TTL_SECONDS=900
 MAX_UPLOAD_BYTES=10000000
+BALANCE_RELEASE_HOURS=72
+DISPUTE_WINDOW_DAYS=30
+PAGSEGURO_SANDBOX=true
 ```
 
 ## Workflows
@@ -326,7 +356,7 @@ MAX_UPLOAD_BYTES=10000000
 ### Buyer Workflow
 1. **Browse** → View products and seller ratings
 2. **Purchase** → Create order
-3. **Pay** → Stripe payment (platform account)
+3. **Pay** → PagSeguro payment (PIX/Boleto/Card)
 4. **Wait** → Seller delivers
 5. **Receive** → Mark order as complete
 6. **Review** → Leave rating and comment for seller
@@ -351,8 +381,8 @@ MAX_UPLOAD_BYTES=10000000
 1. **Pending Queue** → GET /admin/withdrawals?status=PENDING
 2. **Review** → Check seller balance and history
 3. **Approve** → POST /admin/withdrawals/:id/approve
-4. **Process** → POST /admin/withdrawals/:id/process (triggers Stripe)
-5. **Monitor** → Wait for completion (2 days)
+4. **Process** → POST /admin/withdrawals/:id/process (triggers PagSeguro PIX)
+5. **Confirm** → Instant PIX transfer completes
 
 ## Deployment
 
@@ -361,7 +391,7 @@ MAX_UPLOAD_BYTES=10000000
 - PostgreSQL 12+
 - Redis 6+
 - S3-compatible storage
-- Stripe account
+- PagSeguro account
 
 ### Steps
 1. Clone repository
@@ -417,12 +447,12 @@ Test complete workflows:
 
 ### Current State
 1. **Email**: Optional, graceful degradation if not configured
-2. **Withdrawal Processing**: Mock implementation (needs Brazilian payment provider)
+2. **Withdrawal Processing**: PagSeguro PIX integration (instant transfers)
 3. **File Encryption**: PII stored without field-level encryption
 4. **Document Verification**: Manual only (no AI/OCR)
 
 ### For Production
-1. Integrate with Brazilian payment provider (PagSeguro, MercadoPago) for PIX
+1. Complete PagSeguro integration testing
 2. Implement field-level PII encryption
 3. Add automated tests
 4. Set up CI/CD pipeline
@@ -478,17 +508,20 @@ This project was developed as a complete marketplace solution with focus on:
 Fuyora is a **production-ready** C2C marketplace backend with:
 - ✅ Complete KYC workflow with multi-level approval
 - ✅ Internal ledger payment system (platform-controlled)
+- ✅ PagSeguro integration (PIX, Boleto, Credit Cards)
 - ✅ Full product/order/review lifecycle
+- ✅ Temporal balance release (72h automatic)
+- ✅ Dispute resolution system
 - ✅ Admin dashboard and management tools
 - ✅ Security features and rate limiting
 - ✅ Email notifications
-- ✅ Brazilian market support (CPF, PIX-ready)
+- ✅ Brazilian market support (CPF, PIX instant payments)
 - ✅ Complete audit trail
-- ✅ 44 API endpoints
+- ✅ 56 API endpoints
 - ✅ Comprehensive documentation
 
-**Total development**: 5 sprints + 1 architecture restructure  
-**Total endpoints**: 44  
+**Total development**: 5 sprints + 1 architecture restructure + Sprint 6  
+**Total endpoints**: 56  
 **Total code**: ~5,400 lines  
 **Status**: Ready for integration testing and deployment
 
