@@ -34,6 +34,14 @@ export interface StatusResult {
   metadata?: Record<string, any>;
 }
 
+export interface BoletoResult {
+  boletoCode: string;
+  boletoUrl: string;
+  boletoBarcode: string;
+  expiresAt: Date;
+  paymentId?: string;
+}
+
 export interface BankInfo {
   account_type: "PIX" | "BANK_TRANSFER" | "CARD";
   pix_key?: string;
@@ -77,6 +85,15 @@ export interface IPaymentProvider {
    * Get payment/transfer status
    */
   getStatus(id: string): Promise<StatusResult>;
+
+  /**
+   * Generate boleto (Brazilian bank slip)
+   * Only for providers that support boleto (PagSeguro, MercadoPago)
+   */
+  generateBoleto?(
+    amount: number,
+    metadata: Record<string, any>
+  ): Promise<BoletoResult>;
 
   /**
    * Verify webhook signature

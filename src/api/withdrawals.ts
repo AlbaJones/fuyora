@@ -335,4 +335,56 @@ router.post(
   }
 );
 
+/**
+ * POST /admin/withdrawals/:id/anticipate
+ * Anticipate a withdrawal (admin - skip 48h delay)
+ * Requires reason for audit trail
+ */
+router.post(
+  "/admin/withdrawals/:id/anticipate",
+  authLimiter,
+  ensureAuthenticated,
+  ensureAdmin,
+  async (req: Request, res: Response) => {
+    try {
+      const userId = (req as any).user.id;
+      const manager = (req as any).scope.resolve("manager");
+      const { id } = req.params;
+      const { reason } = req.body;
+      const adminIp = req.ip || req.socket.remoteAddress;
+
+      if (!reason || reason.trim().length < 10) {
+        return res.status(400).json({
+          error: "Anticipation reason is required (minimum 10 characters)",
+        });
+      }
+
+      const withdrawalService = new WithdrawalService(manager);
+      const withdrawal = await withdrawalService.anticipateWithdrawal(
+        id,
+        userId,
+        reason,
+        adminIp
+      );
+
+      return res.json({
+        id: withdrawal.id,
+        status: withdrawal.status,
+        anticipated: withdrawal.anticipated,
+        anticipated_by: withdrawal.anticipated_by,
+        anticipation_reason: withdrawal.anticipation_reason,
+        anticipated_at: withdrawal.anticipated_at,
+        can_process_at: withdrawal.can_process_at,
+        message:
+          "Withdrawal anticipated successfully. Will be processed in the next scheduled run.",
+      });
+    } catch (error: any) {
+      console.error("Failed to anticipate withdrawal:", error);
+      return res.status(400).json({
+        error: error.message || "Failed to anticipate withdrawal",
+      });
+    }
+  }
+);
+
 export default router;

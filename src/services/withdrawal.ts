@@ -73,18 +73,37 @@ export class WithdrawalService {
       throw new Error("Bank code and account number required for bank transfers");
     }
 
-    // Create withdrawal request
+    // Calculate can_process_at (48h delay by default)
+    const delayHours = parseInt(process.env.WITHDRAWAL_DELAY_HOURS || "48");
+    const canProcessAt = new Date();
+    canProcessAt.setHours(canProcessAt.getHours() + delayHours);
+
+    // Debit balance IMMEDIATELY to prevent double withdrawal
+    await this.ledgerService.debit(
+      sellerId,
+      amount,
+      "WITHDRAWAL",
+      withdrawalId,
+      `Withdrawal request for ${amount}`
+    );
+
+    // Create withdrawal request with WAITING_DELAY status
     const withdrawal = this.manager.create(Withdrawal, {
       seller_id: sellerId,
       amount,
-      status: WithdrawalStatus.PENDING,
+      status: WithdrawalStatus.WAITING_DELAY,
       bank_info: bankInfo,
       requested_at: new Date(),
+      delay_hours: delayHours,
+      can_process_at: canProcessAt,
+      anticipated: false,
     });
 
     await this.manager.save(withdrawal);
 
-    console.log(`Withdrawal requested: ${withdrawal.id} for seller ${sellerId}`);
+    console.log(
+      `Withdrawal requested: ${withdrawal.id} for seller ${sellerId}, can process at ${canProcessAt}`
+    );
 
     return withdrawal;
   }
@@ -271,5 +290,76 @@ export class WithdrawalService {
     return this.manager.count(Withdrawal, {
       where: { status: WithdrawalStatus.PENDING },
     });
+  }
+
+  /**
+   * Anticipate withdrawal (admin - skip 48h delay)
+   * Requires reason for complete audit trail
+   */
+  async anticipateWithdrawal(
+    withdrawalId: string,
+    adminId: string,
+    reason: string,
+    adminIp?: string
+  ): Promise<Withdrawal> {
+    const withdrawal = await this.manager.findOne(Withdrawal, {
+      where: { id: withdrawalId },
+    });
+
+    if (!withdrawal) {
+      throw new Error("Withdrawal not found");
+    }
+
+    if (withdrawal.status !== WithdrawalStatus.WAITING_DELAY) {
+      throw new Error(
+        `Cannot anticipate withdrawal in status: ${withdrawal.status}. Must be WAITING_DELAY.`
+      );
+    }
+
+    if (withdrawal.anticipated) {
+      throw new Error("Withdrawal already anticipated");
+    }
+
+    // Store original can_process_at for audit
+    const originalCanProcessAt = withdrawal.can_process_at;
+
+    // Set can_process_at to now (immediate processing)
+    withdrawal.can_process_at = new Date();
+    withdrawal.anticipated = true;
+    withdrawal.anticipated_by = adminId;
+    withdrawal.anticipation_reason = reason;
+    withdrawal.anticipated_at = new Date();
+    withdrawal.admin_ip = adminIp || null;
+
+    await this.manager.save(withdrawal);
+
+    // Create audit log
+    const { AuditLog } = await import("../models/audit-log");
+    const { AuditAction } = await import("../models/audit-log");
+    const auditRepo = this.manager.getRepository(AuditLog);
+
+    const auditLog = auditRepo.create({
+      actor_id: adminId,
+      action: AuditAction.WITHDRAWAL_ANTICIPATED,
+      entity_type: "withdrawal",
+      entity_id: withdrawalId,
+      payload: {
+        withdrawal_id: withdrawalId,
+        seller_id: withdrawal.seller_id,
+        amount: withdrawal.amount,
+        reason: reason,
+        original_can_process_at: originalCanProcessAt,
+        new_can_process_at: withdrawal.can_process_at,
+        admin_ip: adminIp,
+      },
+    });
+
+    await auditRepo.save(auditLog);
+
+    console.log(
+      `Withdrawal ${withdrawalId} anticipated by admin ${adminId}. Reason: ${reason}`
+    );
+
+    return withdrawal;
   }
 }

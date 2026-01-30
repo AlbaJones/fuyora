@@ -203,4 +203,90 @@ export class PagSeguroProvider implements IPaymentProvider {
     // In production, implement proper verification
     return true;
   }
+
+  /**
+   * Generate boleto (Brazilian bank slip)
+   * Expires in 48 hours by default (configurable via BOLETO_EXPIRATION_HOURS)
+   */
+  async generateBoleto(
+    amount: number,
+    metadata: Record<string, any>
+  ): Promise<{ boletoCode: string; boletoUrl: string; boletoBarcode: string; expiresAt: Date }> {
+    try {
+      // Calculate expiration date (48h default)
+      const expirationHours = parseInt(process.env.BOLETO_EXPIRATION_HOURS || "48");
+      const expiresAt = new Date();
+      expiresAt.setHours(expiresAt.getHours() + expirationHours);
+
+      // Create boleto with PagSeguro
+      const response = await axios.post(
+        `${this.baseUrl}/orders`,
+        {
+          reference_id: metadata.order_id || `boleto_${Date.now()}`,
+          customer: metadata.customer || {
+            name: "Cliente",
+            email: "cliente@example.com",
+            tax_id: "12345678909",
+          },
+          items: [
+            {
+              name: metadata.description || "Pedido",
+              quantity: 1,
+              unit_amount: Math.round(amount * 100), // Convert to cents
+            },
+          ],
+          charges: [
+            {
+              reference_id: `charge_${Date.now()}`,
+              description: metadata.description || "Pagamento via Boleto",
+              amount: {
+                value: Math.round(amount * 100),
+                currency: "BRL",
+              },
+              payment_method: {
+                type: "BOLETO",
+                boleto: {
+                  due_date: expiresAt.toISOString().split("T")[0], // YYYY-MM-DD format
+                  instruction_lines: {
+                    line_1: "Pagamento processado pela plataforma",
+                    line_2: "Não receber após o vencimento",
+                  },
+                  holder: {
+                    name: metadata.customer?.name || "Cliente",
+                    tax_id: metadata.customer?.tax_id || "12345678909",
+                    email: metadata.customer?.email || "cliente@example.com",
+                  },
+                },
+              },
+            },
+          ],
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${this.token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      // Extract boleto data from response
+      const boleto = response.data.charges?.[0]?.payment_method?.boleto;
+
+      if (!boleto) {
+        throw new Error("Failed to generate boleto - no boleto data in response");
+      }
+
+      return {
+        boletoCode: boleto.id || `BOLETO_${Date.now()}`,
+        boletoUrl: boleto.formatted_barcode_url || boleto.links?.find((l: any) => l.rel === "SELF")?.href || "",
+        boletoBarcode: boleto.barcode || boleto.formatted_barcode || "",
+        expiresAt,
+      };
+    } catch (error: any) {
+      console.error("PagSeguro boleto generation error:", error.response?.data || error);
+      throw new Error(
+        `Failed to generate boleto: ${error.response?.data?.error_messages?.[0]?.description || error.message}`
+      );
+    }
+  }
 }

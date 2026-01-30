@@ -110,4 +110,107 @@ router.post("/webhooks/stripe", async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * POST /payments/boleto
+ * Generate a boleto for payment
+ * Expires in 48 hours (configurable via BOLETO_EXPIRATION_HOURS)
+ */
+router.post(
+  "/payments/boleto",
+  authLimiter,
+  ensureAuthenticated,
+  async (req: Request, res: Response) => {
+    try {
+      const { amount, seller_id, order_id, description } = req.body;
+
+      if (!amount || !seller_id) {
+        return res.status(400).json({
+          message: "Amount and seller_id are required",
+        });
+      }
+
+      if (amount < 500) {
+        return res.status(400).json({
+          message: "Minimum amount for boleto is R$ 5.00",
+        });
+      }
+
+      // Get PagSeguro provider
+      const { PaymentProviderFactory } = await import("../services/providers/provider-factory");
+      const provider = PaymentProviderFactory.getProvider();
+
+      // Generate boleto
+      const result = await provider.generateBoleto(amount, {
+        seller_id,
+        order_id,
+        description: description || `Pedido #${order_id}`,
+      });
+
+      return res.json({
+        boleto_code: result.boletoCode,
+        boleto_url: result.boletoUrl,
+        boleto_barcode: result.boletoBarcode,
+        expires_at: result.expiresAt,
+        message: `Boleto expires in ${process.env.BOLETO_EXPIRATION_HOURS || 48} hours`,
+      });
+    } catch (error: any) {
+      console.error("Generate boleto error:", error);
+      return res.status(500).json({
+        message: "Failed to generate boleto",
+      });
+    }
+  }
+);
+
+/**
+ * GET /payments/:id/boleto
+ * Get boleto details for a payment
+ */
+router.get(
+  "/payments/:id/boleto",
+  authLimiter,
+  ensureAuthenticated,
+  async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+
+      // Get payment from database
+      const paymentService = req.scope.resolve("paymentService");
+      const payment = await paymentService.retrieve(id);
+
+      if (!payment) {
+        return res.status(404).json({
+          message: "Payment not found",
+        });
+      }
+
+      if (payment.payment_method !== "BOLETO") {
+        return res.status(400).json({
+          message: "This payment is not a boleto",
+        });
+      }
+
+      const now = new Date();
+      const isExpired =
+        payment.boleto_expires_at && payment.boleto_expires_at < now;
+
+      return res.json({
+        id: payment.id,
+        boleto_code: payment.boleto_code,
+        boleto_url: payment.boleto_url,
+        boleto_barcode: payment.boleto_barcode,
+        expires_at: payment.boleto_expires_at,
+        status: payment.status,
+        is_expired: isExpired,
+        amount: payment.amount,
+      });
+    } catch (error: any) {
+      console.error("Get boleto error:", error);
+      return res.status(500).json({
+        message: "Failed to get boleto details",
+      });
+    }
+  }
+);
+
 export default router;

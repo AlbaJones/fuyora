@@ -121,7 +121,8 @@ export class Transaction extends BaseEntity {
 export enum WithdrawalStatus {
   PENDING = "PENDING", // Requested by seller
   APPROVED = "APPROVED", // Approved by admin, ready to process
-  PROCESSING = "PROCESSING", // Being processed via Stripe
+  WAITING_DELAY = "WAITING_DELAY", // Waiting for 48h delay
+  PROCESSING = "PROCESSING", // Being processed via payment provider
   COMPLETED = "COMPLETED", // Successfully transferred
   FAILED = "FAILED", // Failed to transfer
   CANCELLED = "CANCELLED", // Cancelled by admin or seller
@@ -161,9 +162,31 @@ export class Withdrawal extends BaseEntity {
     account_holder_document?: string;
   };
 
-  // Stripe transfer ID (when processed)
   @Column({ type: "varchar", nullable: true })
   stripe_transfer_id!: string | null;
+
+  // Withdrawal delay fields (48h default)
+  @Column({ type: "integer", default: 48 })
+  delay_hours!: number;
+
+  @Column({ type: "timestamp with time zone", nullable: true })
+  can_process_at!: Date | null; // When withdrawal can be processed
+
+  // Admin anticipation fields
+  @Column({ type: "boolean", default: false })
+  anticipated!: boolean;
+
+  @Column({ type: "varchar", nullable: true })
+  anticipated_by!: string | null; // Admin user_id
+
+  @Column({ type: "text", nullable: true })
+  anticipation_reason!: string | null;
+
+  @Column({ type: "timestamp with time zone", nullable: true })
+  anticipated_at!: Date | null;
+
+  @Column({ type: "varchar", nullable: true })
+  admin_ip!: string | null;
 
   // Processing details
   @Column({ type: "varchar", nullable: true })

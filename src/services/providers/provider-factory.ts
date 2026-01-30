@@ -5,7 +5,7 @@ import { PagSeguroProvider } from "./pagseguro.provider";
  * Payment provider factory - PagSeguro only
  * PagSeguro is the Brazilian market leader with native PIX and Boleto support
  */
-export class ProviderFactory {
+export class PaymentProviderFactory {
   private static providerInstance: IPaymentProvider | null = null;
 
   /**
@@ -54,13 +54,13 @@ export class ProviderFactory {
  * Helper functions for easier access
  */
 export function getPaymentProvider(): IPaymentProvider {
-  return ProviderFactory.getPaymentProvider();
+  return PaymentProviderFactory.getPaymentProvider();
 }
 
 export function getWithdrawalProvider(): IPaymentProvider {
-  return ProviderFactory.getWithdrawalProvider();
+  return PaymentProviderFactory.getWithdrawalProvider();
 }
 
 export function getProvider(): IPaymentProvider {
-  return ProviderFactory.getProvider();
+  return PaymentProviderFactory.getProvider();
 }
