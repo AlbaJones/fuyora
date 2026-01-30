@@ -1,6 +1,6 @@
-# Fuyora Backend - Sprints 1, 2 & 3
+# Fuyora Backend - Complete Marketplace Platform (Sprints 1-4)
 
-MedusaJS-based marketplace backend with KYC submission, admin review workflow, rate limiting, CPF validation, and email notifications.
+MedusaJS-based C2C marketplace backend with complete KYC workflow, multi-level approval, admin dashboard, and Stripe payment integration.
 
 ## Features
 
@@ -22,6 +22,12 @@ MedusaJS-based marketplace backend with KYC submission, admin review workflow, r
 - **Email Notifications**: Automated emails for approval/rejection (Portuguese)
 - **Event Subscribers**: Auto-send emails on KYC events
 
+### Sprint 4 - Dashboard, Multi-Level & Payments
+- **Admin Dashboard**: Real-time statistics and KYC metrics
+- **Multi-Level Approval**: 3-level escalation workflow for complex cases
+- **Stripe Integration**: Payment processing with platform fees (10%)
+- **Document Viewer**: Manual document review (NO AI/OCR)
+
 ## Setup
 
 ### Prerequisites
@@ -30,6 +36,7 @@ MedusaJS-based marketplace backend with KYC submission, admin review workflow, r
 - PostgreSQL
 - Redis
 - S3-compatible storage (AWS S3, MinIO, etc.)
+- Stripe account (for payments)
 
 ### Installation
 
@@ -261,6 +268,182 @@ Reject a KYC submission with reason.
 }
 ```
 
+### Admin Dashboard
+
+#### GET /admin/dashboard/stats
+Get overall platform statistics.
+
+**Authentication**: Required (****** with admin role)
+
+**Response**:
+```json
+{
+  "total_submissions": 1250,
+  "pending_review": 45,
+  "approved": 1100,
+  "rejected": 105,
+  "approval_rate": 91.29,
+  "average_review_time_hours": 2.5
+}
+```
+
+#### GET /admin/dashboard/kyc-metrics
+Get detailed KYC metrics by status and level.
+
+**Authentication**: Required (****** with admin role)
+
+**Response**:
+```json
+{
+  "submissions_by_status": {
+    "EM_ANALISE": 45,
+    "APROVADO": 1100,
+    "RECUSADO": 105
+  },
+  "submissions_by_level": {
+    "level_1": 30,
+    "level_2": 12,
+    "level_3": 3
+  },
+  "recent_submissions": 15,
+  "today_submissions": 8,
+  "week_submissions": 67
+}
+```
+
+#### GET /admin/dashboard/recent-activity
+Get recent submissions.
+
+**Authentication**: Required (****** with admin role)
+
+**Query Parameters**:
+- `limit` (optional): Number of results (default: 10, max: 100)
+
+#### GET /admin/kyc/submissions/:id/documents
+Get document URLs for manual viewing.
+
+**Authentication**: Required (****** with admin role)
+
+**Response**:
+```json
+{
+  "submission_id": "uuid",
+  "user_id": "user-uuid",
+  "documents": {
+    "doc_url": "https://s3.../doc.pdf",
+    "selfie_url": "https://s3.../selfie.jpg",
+    "proof_url": "https://s3.../proof.pdf"
+  },
+  "personal_data": { ... },
+  "note": "Documents must be manually reviewed by admin. No automated verification is performed."
+}
+```
+
+**⚠️ IMPORTANT**: This endpoint returns URLs for **manual human review only**. No AI, OCR, or automated verification is performed.
+
+### Multi-Level Approval Workflow
+
+#### GET /admin/kyc/level/:level/submissions
+List submissions at specific approval level (1, 2, or 3).
+
+**Authentication**: Required (****** with admin role)
+
+**Query Parameters**:
+- `page` (optional): Page number (default: 1)
+- `limit` (optional): Results per page (default: 20, max: 100)
+
+#### POST /admin/kyc/submissions/:id/approve-level
+Approve submission at current level.
+
+**Authentication**: Required (****** with admin role)
+
+**Request Body**:
+```json
+{
+  "final_approval": true
+}
+```
+
+- If `final_approval=true`: Final approval, sets status to APROVADO
+- If `final_approval=false`: Approve current level only
+
+#### POST /admin/kyc/submissions/:id/escalate
+Escalate submission to next approval level.
+
+**Authentication**: Required (****** with admin role)
+
+**Request Body**:
+```json
+{
+  "reason": "Requires senior review due to document complexity"
+}
+```
+
+Maximum level: 3. Returns error if already at level 3.
+
+#### POST /admin/kyc/submissions/:id/reject-level
+Reject submission at any level.
+
+**Authentication**: Required (****** with admin role)
+
+**Request Body**:
+```json
+{
+  "rejection_reason": "Documents are not clear enough"
+}
+```
+
+### Stripe Payments
+
+#### POST /seller/stripe-account
+Create Stripe Connect account for seller.
+
+**Authentication**: Required (******
+
+**Request Body**:
+```json
+{
+  "email": "seller@example.com",
+  "country": "BR"
+}
+```
+
+**Response**:
+```json
+{
+  "account_id": "acct_...",
+  "onboarding_url": "https://connect.stripe.com/...",
+  "message": "Stripe account created. Complete onboarding to start selling."
+}
+```
+
+#### GET /seller/stripe-account
+Get seller's Stripe account status.
+
+**Authentication**: Required (******
+
+#### POST /payments/create-intent
+Create payment intent for purchase.
+
+**Authentication**: Required (******
+
+**Request Body**:
+```json
+{
+  "amount": 10000,
+  "currency": "brl",
+  "seller_id": "user-123",
+  "metadata": {
+    "product_id": "prod-456"
+  }
+}
+```
+
+Amount in cents (10000 = R$ 100.00). Platform fee is automatically calculated.
+
+#### POST /webhooks/stripe
+Stripe webhook endpoint (signature verification required).
+
 ## Rate Limiting
 
 All endpoints are protected with rate limiting to prevent abuse:
@@ -304,6 +487,8 @@ Configure SMTP in environment variables (optional - system works without email).
 - `submitted_at`: TIMESTAMP
 - `reviewed_at`: TIMESTAMP (nullable)
 - `reviewer_id`: VARCHAR (nullable)
+- **`approval_level`**: INTEGER (default: 1) - Sprint 4
+- **`approval_history`**: JSONB (nullable) - Sprint 4
 - `created_at`: TIMESTAMP
 - `updated_at`: TIMESTAMP
 
@@ -315,6 +500,32 @@ Configure SMTP in environment variables (optional - system works without email).
 - `action`: ENUM (KYC_SUBMIT, KYC_REVIEW_APPROVE, KYC_REVIEW_REJECT, USER_STATUS_CHANGE)
 - `payload`: JSONB
 - `created_at`: TIMESTAMP
+
+### payment (Sprint 4)
+- `id`: UUID (primary key)
+- `buyer_id`: VARCHAR
+- `seller_id`: VARCHAR
+- `amount`: DECIMAL(10,2)
+- `platform_fee`: DECIMAL(10,2)
+- `seller_amount`: DECIMAL(10,2)
+- `currency`: VARCHAR
+- `status`: ENUM (PENDING, PROCESSING, COMPLETED, FAILED, REFUNDED)
+- `stripe_payment_intent_id`: VARCHAR (nullable)
+- `stripe_charge_id`: VARCHAR (nullable)
+- `metadata`: JSONB (nullable)
+- `created_at`: TIMESTAMP
+- `updated_at`: TIMESTAMP
+
+### seller_account (Sprint 4)
+- `id`: UUID (primary key)
+- `user_id`: VARCHAR (unique)
+- `stripe_account_id`: VARCHAR (unique)
+- `status`: ENUM (PENDING, ACTIVE, RESTRICTED, DISABLED)
+- `charges_enabled`: BOOLEAN
+- `payouts_enabled`: BOOLEAN
+- `requirements`: JSONB (nullable)
+- `created_at`: TIMESTAMP
+- `updated_at`: TIMESTAMP
 
 ## Environment Variables
 
@@ -343,12 +554,16 @@ Configure SMTP in environment variables (optional - system works without email).
 ## Architecture
 
 ### Models
-- `KycSubmission`: Stores KYC submission data
+- `KycSubmission`: Stores KYC submission data with multi-level approval
 - `AuditLog`: Tracks audit events
+- `Payment`: Payment transaction records (Sprint 4)
+- `SellerAccount`: Stripe Connect account info (Sprint 4)
 
 ### Services
-- `KycService`: Handles KYC submission, approval, rejection, and audit logging
+- `KycService`: Handles KYC submission, multi-level approval, rejection, and audit logging
 - `EmailService`: Sends email notifications for KYC events
+- `DashboardService`: Provides statistics and metrics (Sprint 4)
+- `StripeService`: Stripe payment integration (Sprint 4)
 
 ### Middleware
 - `ensureAuthenticated`: JWT authentication middleware
@@ -367,24 +582,39 @@ Configure SMTP in environment variables (optional - system works without email).
 - Built with MedusaJS v1 and TypeORM
 - Uses PostgreSQL for data storage
 - Redis for caching and event bus
+- Stripe for payment processing (Sprint 4)
 - S3-compatible storage for file uploads
 - Complete audit logging for all operations
 - Rate limiting on all endpoints
 - CPF validation for Brazilian users
 - Email notifications (optional)
+- Stripe payment processing (Sprint 4)
 
 ## Sprints Completed
 
 ✅ **Sprint 1**: KYC Submission, S3 Uploads, Audit Logging  
 ✅ **Sprint 2**: Admin Approval/Rejection Workflow  
-✅ **Sprint 3**: Rate Limiting, CPF Validation, Email Notifications
+✅ **Sprint 3**: Rate Limiting, CPF Validation, Email Notifications  
+✅ **Sprint 4**: Admin Dashboard, Multi-Level Workflow, Stripe Payments
 
-## Future Enhancements (Sprint 4+)
+## API Endpoints Summary
 
-- Admin dashboard with statistics and metrics
-- Enhanced document verification (AI/OCR)
-- Document URL validation
-- Implement field-level encryption for PII
-- Order processing and Stripe payments with escrow
-- Review dashboard and analytics
-- Multi-level KYC review workflow
+**Total Endpoints**: 20
+
+- **User (3)**: Storage presign, KYC submission, Get my KYC
+- **Admin KYC (4)**: List, Get, Approve, Reject
+- **Admin Dashboard (4)**: Stats, Metrics, Activity, Documents
+- **Admin Multi-Level (4)**: List by level, Approve level, Escalate, Reject level
+- **Payments (4)**: Create seller account, Get account, Create intent, Webhook
+- **General (1)**: Stripe webhook
+
+## Future Enhancements (Sprint 5+)
+
+- Order management system
+- Product/service listings
+- Shopping cart functionality
+- Advanced fraud detection (rule-based, non-AI)
+- Seller performance analytics
+- Buyer/seller ratings and reviews
+- Dispute resolution system
+- Advanced payment features (subscriptions, installments)
