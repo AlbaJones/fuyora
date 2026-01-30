@@ -69,12 +69,30 @@ MedusaJS-based C2C marketplace backend with complete KYC workflow, multi-level a
 - **Complete Audit**: IP address, user agent, and all decisions logged
 - **See**: [SPRINT8_SUMMARY.md](./SPRINT8_SUMMARY.md) for complete details
 
-### 🆕 Payment Restructure - Internal Ledger System
+### 🆕 Sprint 9 - Boleto Expiration & Withdrawal Delay ⏰
+- **Boleto Expiration**: Automatic 48h expiration for all boletos
+- **Withdrawal Delay**: 48h mandatory delay for all withdrawals (including PIX)
+- **Admin Anticipation**: Manual withdrawal processing with reason tracking
+- **Scheduled Jobs**: Automated boleto expiration and withdrawal processing
+- **Complete Audit**: All delays and anticipations fully logged
+
+### 🎯 FINAL SPRINT - Stripe Removal & PagSeguro Standardization
+- **Stripe COMPLETELY REMOVED**: All Stripe code, dependencies, and database fields deleted
+- **PagSeguro EXCLUSIVE**: Single payment provider for simplified architecture
+- **Cleaner Codebase**: Reduced complexity, fewer dependencies
+- **Brazilian Market**: 100% aligned with Brazilian payment methods (PIX, Boleto, Cards)
+- **Production Ready**: Final version 1.0 complete
+- **See**: [FINAL_VERSION.md](./FINAL_VERSION.md) for complete project summary
+
+### 🆕 Payment Architecture - Internal Ledger System (PagSeguro ONLY)
+- **Payment Provider**: PagSeguro (EXCLUSIVE) 🇧🇷
+- **Payment Methods**: PIX, Boleto Bancário, Cartão de Crédito nacional
 - **Internal Ledger**: Platform-controlled balance tracking
 - **Seller Balances**: Available, pending, and held funds
 - **Withdrawal System**: Seller-requested, admin-approved withdrawals
 - **Complete Audit**: Immutable transaction ledger
-- **Brazilian Support**: PIX and bank transfer ready
+- **Brazilian Support**: PIX instant payments, Boleto with expiration
+- **Stripe**: COMPLETELY REMOVED ❌
 - **See**: [PAYMENT_ARCHITECTURE.md](./PAYMENT_ARCHITECTURE.md) for complete details
 
 ## Setup
