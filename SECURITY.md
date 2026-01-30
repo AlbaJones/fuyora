@@ -41,12 +41,16 @@ KYC document URLs are stored and returned without additional protection. For pro
 1. **CPF Validation**: CPF (Brazilian tax ID) format and checksum are not validated
 2. **Document URL Validation**: No validation that URLs match expected S3 bucket/pattern
 3. **Address Validation**: Address fields accept any string values
+4. **Rate Limiting**: API endpoints are not rate-limited (Sprint 1)
 
 **Recommendations**:
 1. Add CPF format validation and checksum verification
 2. Validate document URLs match the expected S3 bucket and key pattern
 3. Consider address validation/normalization
-4. Implement rate limiting on KYC submissions
+4. **Implement rate limiting on all API endpoints** (Critical for production)
+   - KYC submissions: Limit to prevent abuse
+   - Presigned URL generation: Limit to prevent storage exhaustion
+   - GET endpoints: Limit to prevent DoS
 
 ### Error Handling
 
