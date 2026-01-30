@@ -20,7 +20,14 @@ export const ensureAuthenticated = (
   }
 
   const token = authHeader.substring(7);
-  const jwtSecret = process.env.JWT_SECRET || "supersecret";
+  const jwtSecret = process.env.JWT_SECRET;
+
+  if (!jwtSecret || jwtSecret === "supersecret") {
+    console.error("CRITICAL: JWT_SECRET is not properly configured");
+    return res.status(500).json({
+      message: "Server configuration error",
+    });
+  }
 
   try {
     const decoded = jwt.verify(token, jwtSecret) as JwtPayload;

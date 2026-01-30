@@ -34,9 +34,9 @@ router.post("/storage/presign", ensureAuthenticated, async (req: Request, res: R
 
     // Validate content length
     const maxUploadBytes = parseInt(process.env.MAX_UPLOAD_BYTES || "10000000");
-    if (!content_length || content_length > maxUploadBytes) {
+    if (!content_length || content_length <= 0 || content_length > maxUploadBytes) {
       return res.status(400).json({
-        message: `Invalid content_length. Maximum allowed: ${maxUploadBytes} bytes`,
+        message: `Invalid content_length. Must be positive and maximum allowed: ${maxUploadBytes} bytes`,
       });
     }
 
@@ -61,7 +61,6 @@ router.post("/storage/presign", ensureAuthenticated, async (req: Request, res: R
     console.error("Presign error:", error);
     return res.status(500).json({
       message: "Failed to generate presigned URL",
-      error: error.message,
     });
   }
 });

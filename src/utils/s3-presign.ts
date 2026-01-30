@@ -15,12 +15,21 @@ export class S3PresignService {
   constructor() {
     const endpoint = process.env.AWS_S3_ENDPOINT;
     const forcePathStyle = process.env.AWS_S3_FORCE_PATH_STYLE === "true";
+    const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
+    const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
+
+    // Validate AWS credentials are configured
+    if (!accessKeyId || !secretAccessKey) {
+      throw new Error(
+        "AWS credentials not configured. Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables."
+      );
+    }
 
     this.s3Client = new S3Client({
       region: process.env.AWS_REGION || "us-east-1",
       credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID || "",
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || "",
+        accessKeyId,
+        secretAccessKey,
       },
       ...(endpoint && { endpoint }),
       forcePathStyle,

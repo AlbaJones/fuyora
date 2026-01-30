@@ -97,27 +97,8 @@ class KycService extends TransactionBaseService {
 
       await auditRepo.save(auditLog);
 
-      // Update user status (if userService is available)
-      if (this.userService_) {
-        try {
-          // This would update the user's KYC status
-          // await this.userService_.update(userId, { kyc_status: "KYC_EM_ANALISE" });
-        } catch (e) {
-          // Handle silently for now
-        }
-      }
-
-      // Emit placeholder event
-      if (this.eventBusService_) {
-        try {
-          // await this.eventBusService_.emit("user.kyc_submitted", {
-          //   user_id: userId,
-          //   submission_id: savedSubmission.id,
-          // });
-        } catch (e) {
-          // Handle silently for now
-        }
-      }
+      // TODO: Update user status when userService is available
+      // TODO: Emit event 'user.kyc_submitted' when eventBusService is configured
 
       return savedSubmission;
     });

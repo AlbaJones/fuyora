@@ -53,7 +53,6 @@ router.post("/kyc/submissions", ensureAuthenticated, async (req: Request, res: R
 
     return res.status(500).json({
       message: "Failed to submit KYC",
-      error: error.message,
     });
   }
 });
@@ -87,7 +86,6 @@ router.get("/kyc/submissions/me", ensureAuthenticated, async (req: Request, res:
     console.error("Get KYC error:", error);
     return res.status(500).json({
       message: "Failed to get KYC submission",
-      error: error.message,
     });
   }
 });
