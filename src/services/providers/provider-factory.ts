@@ -86,3 +86,14 @@ export class ProviderFactory {
     this.withdrawalProviderInstance = null;
   }
 }
+
+/**
+ * Helper functions for easier access
+ */
+export function getPaymentProvider(): IPaymentProvider {
+  return ProviderFactory.getPaymentProvider();
+}
+
+export function getWithdrawalProvider(): IPaymentProvider {
+  return ProviderFactory.getWithdrawalProvider();
+}

@@ -9,6 +9,7 @@ import productsRoutes from "./products";
 import ordersRoutes from "./orders";
 import reviewsRoutes from "./reviews";
 import withdrawalsRoutes from "./withdrawals";
+import disputesRoutes from "./disputes";
 import bodyParser from "body-parser";
 import cors from "cors";
 
@@ -30,6 +31,7 @@ export default (rootDirectory: string): Router => {
   router.use(ordersRoutes);
   router.use(reviewsRoutes);
   router.use(withdrawalsRoutes);
+  router.use(disputesRoutes);
 
   return router;
 };

@@ -1,7 +1,8 @@
 import { EntityManager } from "typeorm";
 import { Withdrawal, WithdrawalStatus } from "../models/ledger";
 import { LedgerService } from "./ledger";
-import { getStripeService } from "./stripe";
+import { Dispute, DisputeStatus } from "../models/dispute";
+import { getWithdrawalProvider } from "./providers/provider-factory";
 
 export class WithdrawalService {
   private manager: EntityManager;
@@ -43,6 +44,20 @@ export class WithdrawalService {
     if (Number(balance.available_balance) < amount) {
       throw new Error(
         `Insufficient balance. Available: ${balance.available_balance}, Requested: ${amount}`
+      );
+    }
+
+    // Check for active disputes - BLOCKS withdrawal but NOT balance release
+    const activeDisputes = await this.manager.count(Dispute, {
+      where: {
+        seller_id: sellerId,
+        status: DisputeStatus.OPEN,
+      },
+    });
+
+    if (activeDisputes > 0) {
+      throw new Error(
+        `Cannot request withdrawal. You have ${activeDisputes} active dispute(s). Please resolve all disputes before requesting withdrawal.`
       );
     }
 
@@ -142,9 +157,9 @@ export class WithdrawalService {
         withdrawal.id
       );
 
-      // Process via Stripe
-      const stripeService = getStripeService();
-      const transfer = await stripeService.createTransfer(
+      // Process via payment provider (Stripe, PagSeguro, or MercadoPago)
+      const provider = getWithdrawalProvider();
+      const transfer = await provider.createTransfer(
         withdrawal.amount,
         withdrawal.bank_info,
         {
@@ -153,9 +168,9 @@ export class WithdrawalService {
         }
       );
 
-      // Update withdrawal with Stripe info
+      // Update withdrawal with provider transfer info
       withdrawal.status = WithdrawalStatus.COMPLETED;
-      withdrawal.stripe_transfer_id = transfer.id;
+      withdrawal.stripe_transfer_id = transfer.id; // Can be stripe/pagseguro/mercadopago ID
       withdrawal.completed_at = new Date();
       await this.manager.save(withdrawal);
 

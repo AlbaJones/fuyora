@@ -47,6 +47,7 @@ export class LedgerService {
 
   /**
    * Credit sale to pending balance (when order is paid)
+   * Sets pending_release_at to 72 hours from now (temporal release)
    */
   async creditSale(
     sellerId: string,
@@ -56,12 +57,16 @@ export class LedgerService {
   ): Promise<Transaction> {
     const balance = await this.getOrCreateBalance(sellerId);
 
+    // Calculate release time (72 hours by default)
+    const releaseHours = parseInt(process.env.BALANCE_RELEASE_HOURS || "72");
+    const pendingReleaseAt = new Date(Date.now() + releaseHours * 60 * 60 * 1000);
+
     // Update balance
     balance.pending_balance = Number(balance.pending_balance) + amount;
     balance.total_earned = Number(balance.total_earned) + amount;
     await this.manager.save(balance);
 
-    // Create transaction
+    // Create transaction with pending_release_at
     const transaction = this.manager.create(Transaction, {
       seller_id: sellerId,
       type: TransactionType.SALE,
@@ -70,14 +75,19 @@ export class LedgerService {
       reference_id: orderId,
       reference_type: "order",
       description: description || `Sale credit for order ${orderId}`,
-      status: TransactionStatus.COMPLETED,
+      status: TransactionStatus.PENDING, // PENDING until auto-released
+      metadata: {
+        pending_release_at: pendingReleaseAt.toISOString(),
+        order_id: orderId,
+      },
     });
 
     return this.manager.save(transaction);
   }
 
   /**
-   * Move from pending to available (when order is completed)
+   * Move from pending to available (temporal release after 72h)
+   * Called by scheduled job, NOT by order completion
    */
   async makeSaleAvailable(
     sellerId: string,
@@ -99,7 +109,7 @@ export class LedgerService {
       balance_after: Number(balance.available_balance),
       reference_id: orderId,
       reference_type: "order",
-      description: `Sale available for order ${orderId}`,
+      description: `Sale available for order ${orderId} (auto-released after holding period)`,
       status: TransactionStatus.COMPLETED,
     });
 
