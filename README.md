@@ -55,6 +55,20 @@ MedusaJS-based C2C marketplace backend with complete KYC workflow, multi-level a
 - **Force Logout**: Automatic session invalidation on ban
 - **Complete Audit**: All ban actions fully logged
 
+### Sprint 8 - Detailed Ban Appeal Form 📝
+- **Complete Appeal Form**: 6-section detailed appeal process
+- **CPF Validation**: Brazilian tax ID with checksum algorithm
+- **User Identification**: Username, email, full name, CPF required
+- **Ban History Tracking**: Previous bans and types
+- **Rule Acknowledgment**: User must recognize violated rules
+- **Appeal Message**: Minimum 50 characters with detailed explanation
+- **Mandatory Confirmations**: Terms, truthfulness, consequences (all required)
+- **Financial Information**: PIX key collection (informational only)
+- **Admin Review Workflow**: Approve, deny, or deny with financial closure
+- **No Automatic Payments**: All refunds require manual admin processing
+- **Complete Audit**: IP address, user agent, and all decisions logged
+- **See**: [SPRINT8_SUMMARY.md](./SPRINT8_SUMMARY.md) for complete details
+
 ### 🆕 Payment Restructure - Internal Ledger System
 - **Internal Ledger**: Platform-controlled balance tracking
 - **Seller Balances**: Available, pending, and held funds
@@ -764,6 +778,128 @@ When configured, the system sends emails (in Portuguese) for:
 
 Configure SMTP in environment variables (optional - system works without email).
 
+### Ban Appeals (Sprint 8)
+
+Complete detailed ban appeal form system for banned users.
+
+#### POST /ban-appeals
+Submit detailed ban appeal (NO AUTH REQUIRED - accessible from ban screen).
+
+**Request Body:**
+```json
+{
+  "user_id": "uuid (optional)",
+  "username": "string (required)",
+  "email": "string (required)",
+  "full_name": "string (required)",
+  "cpf": "12345678900 (required, validated)",
+  "previously_banned": true/false,
+  "previous_ban_type": "TEMPORARY|PERMANENT|UNKNOWN (required if previously_banned)",
+  "knows_violated_rule": true/false,
+  "violated_rule_description": "string (optional)",
+  "appeal_message": "string (min 50 chars, detailed explanation)",
+  "terms_acknowledged": true,
+  "information_truthful": true,
+  "false_info_consequence_acknowledged": true,
+  "pix_key": "string (required, informational)",
+  "pix_key_type": "CPF|EMAIL|PHONE|RANDOM"
+}
+```
+
+**Response:** 200 OK
+```json
+{
+  "success": true,
+  "appeal": {
+    "id": "uuid",
+    "email": "user@example.com",
+    "status": "PENDING",
+    "submitted_at": "2024-01-30T12:00:00Z"
+  },
+  "message": "Seu pedido de apelação foi enviado..."
+}
+```
+
+**Form Sections:**
+1. **Identification**: Username, email, full name, CPF (validated)
+2. **Ban History**: Previously banned? Type?
+3. **Rule Recognition**: Know which rule violated?
+4. **Appeal Message**: Detailed explanation (min 50 chars)
+5. **Confirmations**: 3 mandatory checkboxes (all must be true)
+6. **Financial Info**: PIX key (informational only, no auto-payment)
+
+#### GET /admin/ban-appeals
+List all ban appeals with filters (ADMIN ONLY).
+
+**Query Params:**
+- `status`: PENDING|UNDER_REVIEW|APPROVED|DENIED
+- `page`: number (default 1)
+- `per_page`: number (default 50)
+
+#### GET /admin/ban-appeals/:id
+Get appeal details with complete context (ADMIN ONLY).
+
+**Response includes:**
+- Complete appeal form data
+- User's ban history (total appeals, approved, denied)
+- Current active ban status
+- Current account balance
+
+#### POST /admin/ban-appeals/:id/approve
+Approve appeal and unban user (ADMIN ONLY).
+
+**Request Body:**
+```json
+{
+  "admin_notes": "User demonstrated genuine remorse. First offense. Approve."
+}
+```
+
+**Result:** Ban removed, user can login
+
+#### POST /admin/ban-appeals/:id/deny
+Deny appeal and keep ban (ADMIN ONLY).
+
+**Request Body:**
+```json
+{
+  "admin_notes": "Repeated offender. Deny." (required)
+}
+```
+
+**Result:** Ban maintained, no financial action
+
+#### POST /admin/ban-appeals/:id/deny-and-close
+Deny appeal and close account financially (ADMIN ONLY).
+
+**Request Body:**
+```json
+{
+  "admin_notes": "Severe fraud. Permanent closure." (required),
+  "refund_decision": "REFUND|NO_REFUND|PENDING" (required),
+  "refund_amount": 150.00 (required if REFUND),
+  "refund_pix_key": "user@example.com" (optional, uses appeal.pix_key if not provided)
+}
+```
+
+**Result:** Ban maintained + financial closure decision recorded
+
+**Important:** If refund_decision = REFUND, admin must manually process payment via PagSeguro and then mark as processed.
+
+#### POST /admin/ban-appeals/:id/mark-refund-processed
+Mark refund as manually processed (ADMIN ONLY).
+
+Called AFTER admin manually processes refund via PagSeguro.
+
+**Appeal System Features:**
+- 📝 **Detailed Form**: 6 sections with complete information
+- ✅ **CPF Validation**: Brazilian tax ID with checksum algorithm
+- 🔒 **Mandatory Confirmations**: All 3 checkboxes required
+- 💰 **Financial Info**: PIX key collection (informational only)
+- 🚫 **No Auto-Payments**: All refunds require manual admin processing
+- 📊 **Complete Context**: Admin sees ban history, balance, current ban
+- 📋 **Audit Trail**: IP, user agent, all decisions logged
+
 ## Database Schema
 
 ### kyc_submission
@@ -950,7 +1086,7 @@ Configure SMTP in environment variables (optional - system works without email).
 
 ## API Endpoints Summary
 
-**Total Endpoints**: 65
+**Total Endpoints**: 72
 
 - **User (3)**: Storage presign, KYC submission, Get my KYC
 - **Admin KYC (4)**: List, Get, Approve, Reject
@@ -962,8 +1098,9 @@ Configure SMTP in environment variables (optional - system works without email).
 - **Reviews (3)**: Create, Get Reviews, Get Rating
 - **Disputes (6)**: Create, Get, Buyer Disputes, Seller Disputes, Respond, Admin Resolve
 - **Ledger (10)**: Balance, Transactions, Withdrawals (create, approve, reject, list)
-- **Ban Management (5)**: Ban user, Ban IP, Ban both, List bans, Unban 🆕
-- **Unban Requests (4)**: Submit request, Ban status check, List requests (admin), Approve/Deny (admin) 🆕
+- **Ban Management (5)**: Ban user, Ban IP, Ban both, List bans, Unban
+- **Unban Requests (4)**: Submit request, Ban status check, List requests (admin), Approve/Deny (admin)
+- **Ban Appeals (7)**: Submit appeal, List appeals (admin), Get appeal details (admin), Approve, Deny, Deny + Close, Mark refund processed 🆕
 - **Webhooks (1)**: PagSeguro webhook
 
 ## Complete Marketplace Workflow
