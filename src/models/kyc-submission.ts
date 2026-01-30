@@ -62,6 +62,18 @@ export class KycSubmission extends BaseEntity {
   @Column({ type: "varchar", nullable: true })
   reviewer_id!: string | null;
 
+  @Column({ type: "integer", default: 1 })
+  approval_level!: number;
+
+  @Column({ type: "jsonb", nullable: true })
+  approval_history!: Array<{
+    level: number;
+    reviewer_id: string;
+    action: "approved" | "rejected" | "escalated";
+    reason?: string;
+    timestamp: Date;
+  }> | null;
+
   @CreateDateColumn({ type: "timestamp with time zone" })
   created_at!: Date;
 
