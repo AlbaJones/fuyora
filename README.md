@@ -94,6 +94,16 @@ MedusaJS-based C2C marketplace backend with complete KYC workflow, multi-level a
 - **Context Aware**: No automatic punishments, human review always available
 - **See**: [V1_CLOSURE.md](./V1_CLOSURE.md) for official project closure
 
+### 📋 Product Moderation System 🛡️
+- **Review Status**: All products require admin review before going live
+- **Rejection Reasons**: Moderators must provide specific reasons when rejecting products
+- **Transparent Communication**: Sellers see exact rejection reasons
+- **Re-submission**: Each product edit triggers new review
+- **Admin Endpoints**: List pending products, approve, or reject with reason
+- **Examples**: "Você precisa comprovar autoria desse curso", "Não damos suporte para esse tipo de produto"
+- **Minimum Reason Length**: 10 characters to ensure clear communication
+- **See**: [PRODUCT_MODERATION.md](./PRODUCT_MODERATION.md) for complete documentation
+
 ### 🏁 **PROJECT V1 COMPLETE - SCOPE CLOSED** 🏁
 **Version**: 1.0.0 FINAL  
 **Status**: ✅ COMPLETE AND PRODUCTION READY  
@@ -1127,7 +1137,7 @@ Called AFTER admin manually processes refund via PagSeguro.
 
 ## API Endpoints Summary
 
-**Total Endpoints**: 72
+**Total Endpoints**: 84 (72 previous + 3 new language violations + 6 ban appeals + 3 product moderation)
 
 - **User (3)**: Storage presign, KYC submission, Get my KYC
 - **Admin KYC (4)**: List, Get, Approve, Reject
@@ -1135,13 +1145,15 @@ Called AFTER admin manually processes refund via PagSeguro.
 - **Admin Multi-Level (4)**: List by level, Approve level, Escalate, Reject level
 - **Payments (2)**: Create intent, Webhook
 - **Products (6)**: Create, List, Get, Update, Delete, My Products
+- **Admin Product Moderation (3)**: List pending, Approve, Reject with reason 🆕
 - **Orders (6)**: Create, Get, Buyer Orders, Seller Orders, Complete, Cancel
 - **Reviews (3)**: Create, Get Reviews, Get Rating
 - **Disputes (6)**: Create, Get, Buyer Disputes, Seller Disputes, Respond, Admin Resolve
 - **Ledger (10)**: Balance, Transactions, Withdrawals (create, approve, reject, list)
 - **Ban Management (5)**: Ban user, Ban IP, Ban both, List bans, Unban
 - **Unban Requests (4)**: Submit request, Ban status check, List requests (admin), Approve/Deny (admin)
-- **Ban Appeals (7)**: Submit appeal, List appeals (admin), Get appeal details (admin), Approve, Deny, Deny + Close, Mark refund processed 🆕
+- **Ban Appeals (7)**: Submit appeal, List appeals (admin), Get appeal details (admin), Approve, Deny, Deny + Close, Mark refund processed
+- **Language Violations (6)**: User violations, Appeal violation, Admin list, Dismiss, Confirm, Remove ban
 - **Webhooks (1)**: PagSeguro webhook
 
 ## Complete Marketplace Workflow
@@ -1149,15 +1161,25 @@ Called AFTER admin manually processes refund via PagSeguro.
 ### Seller Flow
 1. Sign up → Submit KYC → Wait for approval
 2. KYC approved → Start selling
-3. Create products → Publish (status: ACTIVE)
-4. Receive orders → Deliver products
-5. Receive reviews from buyers
+3. Create products → **Admin reviews** 🆕
+4. **Product approved** → Published (status: ACTIVE) 🆕
+5. **If rejected** → See reason → Edit → Resubmit 🆕
+6. Receive orders → Deliver products
+7. Receive reviews from buyers
 
 ### Buyer Flow
-1. Browse products → Check seller ratings
+1. Browse **approved** products → Check seller ratings 🆕
 2. Create order → Pay via PagSeguro (PIX/Boleto/Card)
 3. Receive product
 4. Complete order → Leave review
+
+### Moderator Flow (NEW) 🆕
+1. View pending products
+2. Review product details
+3. Either:
+   - Approve → Product goes live
+   - Reject with reason → Seller sees reason and can fix
+4. Seller edits → Product goes back to pending review
 
 ## Documentation
 
@@ -1168,9 +1190,14 @@ Detailed sprint documentation:
 - [SPRINT4_SUMMARY.md](./SPRINT4_SUMMARY.md) - Dashboard, Multi-Level, Payments
 - [SPRINT5_SUMMARY.md](./SPRINT5_SUMMARY.md) - Products, Orders, Reviews
 - [SPRINT6_SUMMARY.md](./SPRINT6_SUMMARY.md) - Temporal Release, Disputes, PagSeguro Integration
-- [SPRINT7_SUMMARY.md](./SPRINT7_SUMMARY.md) - Financial Rules Clarification & Complete Ban System 🆕
+- [SPRINT7_SUMMARY.md](./SPRINT7_SUMMARY.md) - Financial Rules Clarification & Complete Ban System
+- [SPRINT8_SUMMARY.md](./SPRINT8_SUMMARY.md) - Detailed Ban Appeal Form
+- [SPRINT9_SUMMARY.md](./SPRINT9_SUMMARY.md) - Boleto Expiration & Withdrawal Delay
 - [PAYMENT_ARCHITECTURE.md](./PAYMENT_ARCHITECTURE.md) - Internal Ledger System
+- [PRODUCT_MODERATION.md](./PRODUCT_MODERATION.md) - Product Review System 🆕
 - [PROJECT_SUMMARY.md](./PROJECT_SUMMARY.md) - Complete Project Overview
+- [FINAL_VERSION.md](./FINAL_VERSION.md) - Version 1.0 Final Summary
+- [V1_CLOSURE.md](./V1_CLOSURE.md) - Official V1 Closure
 
 ## Future Enhancements (Sprint 8+)
 
