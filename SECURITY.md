@@ -1,6 +1,6 @@
 # Security Considerations
 
-## Sprint 1 Implementation Notes
+## Sprint 1 & 2 Implementation Notes
 
 ### Data Protection
 
@@ -20,6 +20,25 @@ KYC document URLs are stored and returned without additional protection. For pro
 1. Consider using short-lived presigned URLs for document access
 2. Implement additional authorization checks before serving documents
 3. Audit all document access attempts
+
+### Admin Authorization (Sprint 2)
+
+#### Role-Based Access Control
+- Admin middleware checks user role from JWT/user object
+- Currently checks: `user.role === 'admin'` or `user.is_admin === true`
+- Production should implement proper RBAC with:
+  - Role hierarchy (admin, moderator, user)
+  - Permission-based access control
+  - Separate admin JWT tokens
+  - Admin token rotation policy
+
+**Recommendations**:
+1. Use separate admin authentication endpoint
+2. Implement shorter token expiration for admin tokens
+3. Require 2FA for admin accounts
+4. Log all admin actions (already implemented)
+5. Implement admin session management
+6. Regular admin access audits
 
 ### Authentication & Authorization
 

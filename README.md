@@ -147,6 +147,109 @@ Get current user's KYC status.
 }
 ```
 
+### Admin KYC Management
+
+#### GET /admin/kyc/submissions
+List all KYC submissions with optional filtering.
+
+**Authentication**: Required (Bearer token with admin role)
+
+**Query Parameters**:
+- `status` (optional): Filter by status (EM_ANALISE, APROVADO, RECUSADO)
+- `page` (optional): Page number (default: 1)
+- `limit` (optional): Results per page (default: 20, max: 100)
+
+**Response**:
+```json
+{
+  "submissions": [
+    {
+      "id": "uuid",
+      "user_id": "user-uuid",
+      "status": "EM_ANALISE",
+      "personal_data": {
+        "full_name": "John Doe",
+        "cpf": "123.456.789-00",
+        "address": { ... }
+      },
+      "documents": { ... },
+      "submitted_at": "2024-01-30T12:00:00Z",
+      "reviewed_at": null,
+      "reviewer_id": null,
+      "rejection_reason": null
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 45,
+    "total_pages": 3
+  }
+}
+```
+
+#### GET /admin/kyc/submissions/:id
+Get specific KYC submission details.
+
+**Authentication**: Required (Bearer token with admin role)
+
+**Response**:
+```json
+{
+  "id": "uuid",
+  "user_id": "user-uuid",
+  "status": "EM_ANALISE",
+  "personal_data": { ... },
+  "documents": { ... },
+  "submitted_at": "2024-01-30T12:00:00Z",
+  "reviewed_at": null,
+  "reviewer_id": null,
+  "rejection_reason": null,
+  "created_at": "2024-01-30T12:00:00Z",
+  "updated_at": "2024-01-30T12:00:00Z"
+}
+```
+
+#### POST /admin/kyc/submissions/:id/approve
+Approve a KYC submission.
+
+**Authentication**: Required (Bearer token with admin role)
+
+**Response**:
+```json
+{
+  "id": "uuid",
+  "status": "APROVADO",
+  "reviewed_at": "2024-01-30T14:00:00Z",
+  "reviewer_id": "admin-uuid",
+  "message": "KYC submission approved successfully"
+}
+```
+
+#### POST /admin/kyc/submissions/:id/reject
+Reject a KYC submission with reason.
+
+**Authentication**: Required (Bearer token with admin role)
+
+**Request Body**:
+```json
+{
+  "rejection_reason": "Documents are not clear enough"
+}
+```
+
+**Response**:
+```json
+{
+  "id": "uuid",
+  "status": "RECUSADO",
+  "reviewed_at": "2024-01-30T14:00:00Z",
+  "reviewer_id": "admin-uuid",
+  "rejection_reason": "Documents are not clear enough",
+  "message": "KYC submission rejected successfully"
+}
+```
+
 ## Database Schema
 
 ### kyc_submission
@@ -210,10 +313,13 @@ Get current user's KYC status.
 - S3-compatible storage for file uploads
 - Audit logging for all KYC operations
 
-## Future Enhancements (Sprint 2+)
+## Future Enhancements (Sprint 3+)
 
-- KYC approval/rejection workflow
-- Email notifications
-- Webhook events
-- Order processing
-- Stripe integration with escrow
+- Rate limiting for all endpoints
+- Email notifications for KYC approval/rejection
+- CPF format and checksum validation
+- Document URL validation
+- Implement field-level encryption for PII
+- Order processing and Stripe payments with escrow
+- Review dashboard and analytics
+- Multi-level KYC review workflow
