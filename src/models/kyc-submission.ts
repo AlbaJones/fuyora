@@ -17,24 +17,24 @@ export enum KycStatus {
 @Entity()
 export class KycSubmission extends BaseEntity {
   @PrimaryGeneratedColumn("uuid")
-  id: string;
+  id!: string;
 
   @Index()
   @Column({ type: "varchar" })
-  user_id: string;
+  user_id!: string;
 
   @Column({
     type: "enum",
     enum: KycStatus,
     default: KycStatus.EM_ANALISE,
   })
-  status: KycStatus;
+  status!: KycStatus;
 
   @Column({ type: "text", nullable: true })
-  rejection_reason: string | null;
+  rejection_reason!: string | null;
 
   @Column({ type: "jsonb" })
-  personal_data: {
+  personal_data!: {
     full_name: string;
     cpf: string;
     address: {
@@ -47,24 +47,24 @@ export class KycSubmission extends BaseEntity {
   };
 
   @Column({ type: "jsonb" })
-  documents: {
+  documents!: {
     doc_url: string;
     selfie_url: string;
     proof_url: string;
   };
 
   @Column({ type: "timestamp with time zone" })
-  submitted_at: Date;
+  submitted_at!: Date;
 
   @Column({ type: "timestamp with time zone", nullable: true })
-  reviewed_at: Date | null;
+  reviewed_at!: Date | null;
 
   @Column({ type: "varchar", nullable: true })
-  reviewer_id: string | null;
+  reviewer_id!: string | null;
 
   @CreateDateColumn({ type: "timestamp with time zone" })
-  created_at: Date;
+  created_at!: Date;
 
   @UpdateDateColumn({ type: "timestamp with time zone" })
-  updated_at: Date;
+  updated_at!: Date;
 }

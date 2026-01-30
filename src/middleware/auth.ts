@@ -2,20 +2,8 @@ import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 
 interface JwtPayload {
-  user_id: string;
+  userId: string;
   email?: string;
-}
-
-declare global {
-  namespace Express {
-    interface Request {
-      user?: {
-        id: string;
-        user_id: string;
-        email?: string;
-      };
-    }
-  }
 }
 
 export const ensureAuthenticated = (
@@ -37,11 +25,10 @@ export const ensureAuthenticated = (
   try {
     const decoded = jwt.verify(token, jwtSecret) as JwtPayload;
 
+    // Set the user on request with Medusa's expected format
     req.user = {
-      id: decoded.user_id,
-      user_id: decoded.user_id,
-      email: decoded.email,
-    };
+      userId: decoded.userId,
+    } as any;
 
     next();
   } catch (error) {

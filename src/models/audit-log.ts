@@ -17,29 +17,29 @@ export enum AuditAction {
 @Entity()
 export class AuditLog extends BaseEntity {
   @PrimaryGeneratedColumn("uuid")
-  id: string;
+  id!: string;
 
   @Index()
   @Column({ type: "varchar" })
-  actor_id: string;
+  actor_id!: string;
 
   @Index()
   @Column({ type: "varchar" })
-  entity_type: string;
+  entity_type!: string;
 
   @Index()
   @Column({ type: "varchar" })
-  entity_id: string;
+  entity_id!: string;
 
   @Column({
     type: "enum",
     enum: AuditAction,
   })
-  action: AuditAction;
+  action!: AuditAction;
 
   @Column({ type: "jsonb" })
-  payload: Record<string, any>;
+  payload!: Record<string, any>;
 
   @CreateDateColumn({ type: "timestamp with time zone" })
-  created_at: Date;
+  created_at!: Date;
 }

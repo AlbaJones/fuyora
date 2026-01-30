@@ -1,5 +1,5 @@
 import { Router, Request, Response } from "express";
-import { ensureAuthenticated } from "../../middleware/auth";
+import { ensureAuthenticated } from "../middleware/auth";
 
 const router = Router();
 
@@ -28,7 +28,7 @@ router.post("/kyc/submissions", ensureAuthenticated, async (req: Request, res: R
       });
     }
 
-    const userId = req.user!.user_id;
+    const userId = req.user!.userId || (req.user as any).id;
     const kycService = req.scope.resolve("kycService");
 
     const submission = await kycService.submitKyc(userId, {
@@ -60,7 +60,7 @@ router.post("/kyc/submissions", ensureAuthenticated, async (req: Request, res: R
 
 router.get("/kyc/submissions/me", ensureAuthenticated, async (req: Request, res: Response) => {
   try {
-    const userId = req.user!.user_id;
+    const userId = req.user!.userId || (req.user as any).id;
     const kycService = req.scope.resolve("kycService");
 
     const submission = await kycService.getMine(userId);

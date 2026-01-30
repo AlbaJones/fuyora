@@ -1,6 +1,6 @@
 import { Router, Request, Response } from "express";
-import { ensureAuthenticated } from "../../middleware/auth";
-import { S3PresignService } from "../../utils/s3-presign";
+import { ensureAuthenticated } from "../middleware/auth";
+import { S3PresignService } from "../utils/s3-presign";
 import { v4 as uuidv4 } from "uuid";
 
 const router = Router();
@@ -41,7 +41,7 @@ router.post("/storage/presign", ensureAuthenticated, async (req: Request, res: R
     }
 
     // Generate unique key
-    const userId = req.user!.user_id;
+    const userId = req.user!.userId || (req.user as any).id;
     const fileExtension = content_type === "application/pdf" ? "pdf" : content_type.split("/")[1];
     const key = `${type}/${userId}/${uuidv4()}.${fileExtension}`;
 
