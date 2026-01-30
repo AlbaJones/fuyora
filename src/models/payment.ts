@@ -32,11 +32,13 @@ export class Payment extends BaseEntity {
   @Column({ type: "decimal", precision: 10, scale: 2 })
   amount!: number;
 
+  // Platform fee (calculated from amount)
   @Column({ type: "decimal", precision: 10, scale: 2 })
   platform_fee!: number;
 
+  // Net amount credited to seller (amount - platform_fee)
   @Column({ type: "decimal", precision: 10, scale: 2 })
-  seller_amount!: number;
+  seller_net_amount!: number;
 
   @Column({ type: "varchar" })
   currency!: string;
@@ -56,48 +58,6 @@ export class Payment extends BaseEntity {
 
   @Column({ type: "jsonb", nullable: true })
   metadata!: Record<string, any> | null;
-
-  @CreateDateColumn({ type: "timestamp with time zone" })
-  created_at!: Date;
-
-  @UpdateDateColumn({ type: "timestamp with time zone" })
-  updated_at!: Date;
-}
-
-export enum StripeAccountStatus {
-  PENDING = "PENDING",
-  ACTIVE = "ACTIVE",
-  RESTRICTED = "RESTRICTED",
-  DISABLED = "DISABLED",
-}
-
-@Entity()
-export class SellerAccount extends BaseEntity {
-  @PrimaryGeneratedColumn("uuid")
-  id!: string;
-
-  @Index()
-  @Column({ type: "varchar", unique: true })
-  user_id!: string;
-
-  @Column({ type: "varchar", unique: true })
-  stripe_account_id!: string;
-
-  @Column({
-    type: "enum",
-    enum: StripeAccountStatus,
-    default: StripeAccountStatus.PENDING,
-  })
-  status!: StripeAccountStatus;
-
-  @Column({ type: "boolean", default: false })
-  charges_enabled!: boolean;
-
-  @Column({ type: "boolean", default: false })
-  payouts_enabled!: boolean;
-
-  @Column({ type: "jsonb", nullable: true })
-  requirements!: Record<string, any> | null;
 
   @CreateDateColumn({ type: "timestamp with time zone" })
   created_at!: Date;

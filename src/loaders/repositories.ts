@@ -1,17 +1,29 @@
 import { 
   dataSource,
 } from "@medusajs/medusa/dist/loaders/database";
-import { KycSubmission, AuditLog, Payment, SellerAccount, Product, Order, Review } from "../models";
+import { 
+  KycSubmission, 
+  AuditLog, 
+  Payment, 
+  Product, 
+  Order, 
+  Review,
+  SellerBalance,
+  Transaction,
+  Withdrawal,
+} from "../models";
 
 export default async (container: any): Promise<void> => {
   try {
     const kycSubmissionRepository = dataSource.getRepository(KycSubmission);
     const auditLogRepository = dataSource.getRepository(AuditLog);
     const paymentRepository = dataSource.getRepository(Payment);
-    const sellerAccountRepository = dataSource.getRepository(SellerAccount);
     const productRepository = dataSource.getRepository(Product);
     const orderRepository = dataSource.getRepository(Order);
     const reviewRepository = dataSource.getRepository(Review);
+    const sellerBalanceRepository = dataSource.getRepository(SellerBalance);
+    const transactionRepository = dataSource.getRepository(Transaction);
+    const withdrawalRepository = dataSource.getRepository(Withdrawal);
 
     container.register({
       kycSubmissionRepository: {
@@ -23,9 +35,6 @@ export default async (container: any): Promise<void> => {
       paymentRepository: {
         resolve: () => paymentRepository,
       },
-      sellerAccountRepository: {
-        resolve: () => sellerAccountRepository,
-      },
       productRepository: {
         resolve: () => productRepository,
       },
@@ -34,6 +43,15 @@ export default async (container: any): Promise<void> => {
       },
       reviewRepository: {
         resolve: () => reviewRepository,
+      },
+      sellerBalanceRepository: {
+        resolve: () => sellerBalanceRepository,
+      },
+      transactionRepository: {
+        resolve: () => transactionRepository,
+      },
+      withdrawalRepository: {
+        resolve: () => withdrawalRepository,
       },
     });
   } catch (error) {

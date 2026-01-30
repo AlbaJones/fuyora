@@ -19,103 +19,83 @@ export class StripeService {
       process.env.PLATFORM_FEE_PERCENTAGE || "10"
     );
 
-    console.log("Stripe service initialized successfully");
+    console.log("Stripe service initialized successfully (Platform-only mode)");
   }
 
   /**
-   * Create a Stripe Connect account for a seller
-   */
-  async createConnectedAccount(
-    userId: string,
-    email: string,
-    country: string = "BR"
-  ): Promise<Stripe.Account> {
-    try {
-      const account = await this.stripe.accounts.create({
-        type: "express",
-        country,
-        email,
-        capabilities: {
-          card_payments: { requested: true },
-          transfers: { requested: true },
-        },
-        business_type: "individual",
-        metadata: {
-          user_id: userId,
-        },
-      });
-
-      console.log("Created Stripe Connect account:", account.id);
-      return account;
-    } catch (error) {
-      console.error("Failed to create Stripe Connect account:", error);
-      throw error;
-    }
-  }
-
-  /**
-   * Create account link for onboarding
-   */
-  async createAccountLink(
-    accountId: string,
-    refreshUrl: string,
-    returnUrl: string
-  ): Promise<Stripe.AccountLink> {
-    try {
-      const accountLink = await this.stripe.accountLinks.create({
-        account: accountId,
-        refresh_url: refreshUrl,
-        return_url: returnUrl,
-        type: "account_onboarding",
-      });
-
-      return accountLink;
-    } catch (error) {
-      console.error("Failed to create account link:", error);
-      throw error;
-    }
-  }
-
-  /**
-   * Get account details
-   */
-  async getAccount(accountId: string): Promise<Stripe.Account> {
-    try {
-      const account = await this.stripe.accounts.retrieve(accountId);
-      return account;
-    } catch (error) {
-      console.error("Failed to retrieve account:", error);
-      throw error;
-    }
-  }
-
-  /**
-   * Create a payment intent with platform fee
+   * Create a payment intent (direct to platform account)
+   * NO Stripe Connect - all payments go to platform
    */
   async createPaymentIntent(
     amount: number,
     currency: string,
-    sellerAccountId: string,
     metadata?: Record<string, string>
   ): Promise<Stripe.PaymentIntent> {
     try {
-      // Calculate platform fee
-      const platformFee = Math.round(amount * (this.platformFeePercentage / 100));
-
       const paymentIntent = await this.stripe.paymentIntents.create({
         amount,
         currency: currency.toLowerCase(),
-        application_fee_amount: platformFee,
-        transfer_data: {
-          destination: sellerAccountId,
-        },
         metadata: metadata || {},
+        // NO transfer_data or application_fee_amount
+        // Payment goes directly to platform account
       });
 
       console.log("Created payment intent:", paymentIntent.id);
       return paymentIntent;
     } catch (error) {
       console.error("Failed to create payment intent:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Create a transfer/payout for seller withdrawal
+   * This is called ONLY when seller requests withdrawal
+   * Money is sent from platform account to seller's bank
+   */
+  async createTransfer(
+    amount: number,
+    bankInfo: {
+      account_type: "PIX" | "BANK_TRANSFER";
+      pix_key?: string;
+      bank_code?: string;
+      account_number?: string;
+      account_holder_name?: string;
+      account_holder_document?: string;
+    },
+    metadata?: Record<string, string>
+  ): Promise<Stripe.Transfer> {
+    try {
+      // IMPORTANT: This is a simplified implementation
+      // In a real production environment, you would:
+      // 1. For Brazilian PIX/bank transfers, integrate with a local payment provider
+      //    (e.g., PagSeguro, MercadoPago, PicPay, etc.)
+      // 2. For Stripe, create connected accounts or external bank accounts first
+      
+      // For now, this simulates the transfer
+      // You'll need to replace this with actual bank transfer logic
+      
+      console.log("Creating transfer for withdrawal:", { amount, bankInfo });
+      
+      // Placeholder implementation
+      // In production, replace with actual Stripe Payout or bank transfer API call
+      const mockTransfer: any = {
+        id: `tr_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        object: "transfer",
+        amount: Math.round(amount * 100), // Convert to cents
+        currency: "brl",
+        description: `Withdrawal - ${bankInfo.account_type}`,
+        metadata: metadata || {},
+        created: Math.floor(Date.now() / 1000),
+        destination: "external_bank_account",
+      };
+
+      console.log("Created mock transfer:", mockTransfer.id);
+      console.log("⚠️  IMPORTANT: Replace with real Stripe/bank integration");
+      
+      return mockTransfer as Stripe.Transfer;
+    } catch (error) {
+      console.error("Failed to create transfer:", error);
       throw error;
     }
   }
