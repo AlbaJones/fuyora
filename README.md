@@ -1,6 +1,8 @@
-# Fuyora Backend - Complete Marketplace Platform (Sprints 1-4)
+# Fuyora Backend - Complete C2C Marketplace (Sprints 1-5) ✅
 
-MedusaJS-based C2C marketplace backend with complete KYC workflow, multi-level approval, admin dashboard, and Stripe payment integration.
+**MARKETPLACE COMPLETO E FUNCIONAL!**
+
+MedusaJS-based C2C marketplace backend with complete KYC workflow, multi-level approval, admin dashboard, Stripe payments, products, orders, and reviews system.
 
 ## Features
 
@@ -27,6 +29,12 @@ MedusaJS-based C2C marketplace backend with complete KYC workflow, multi-level a
 - **Multi-Level Approval**: 3-level escalation workflow for complex cases
 - **Stripe Integration**: Payment processing with platform fees (10%)
 - **Document Viewer**: Manual document review (NO AI/OCR)
+
+### Sprint 5 - Marketplace Core ⭐ NEW
+- **Products System**: Create, list, update, delete products
+- **Orders System**: Complete order lifecycle (pending → paid → delivered → completed)
+- **Reviews System**: Bidirectional reviews with ratings and comments
+- **Complete Workflow**: Seller lists → Buyer purchases → Reviews
 
 ## Setup
 
@@ -444,6 +452,135 @@ Amount in cents (10000 = R$ 100.00). Platform fee is automatically calculated.
 #### POST /webhooks/stripe
 Stripe webhook endpoint (signature verification required).
 
+### Marketplace - Products
+
+#### POST /products
+Create a product listing.
+
+**Authentication**: Required (seller)
+
+**Request Body**:
+```json
+{
+  "title": "Ebook: JavaScript Avançado",
+  "description": "Guia completo de JavaScript moderno",
+  "price": 49.90,
+  "category": "ebooks",
+  "digital_product": true,
+  "file_url": "https://s3.../ebook.pdf",
+  "images": ["https://s3.../cover.jpg"]
+}
+```
+
+#### GET /products
+List products (public).
+
+**Query Parameters**:
+- `category`: Filter by category
+- `seller_id`: Filter by seller
+- `status`: Filter by status (default: ACTIVE)
+- `page`, `limit`: Pagination
+
+**Response**:
+```json
+{
+  "products": [...],
+  "total": 150
+}
+```
+
+#### GET /products/:id
+Get product details (public).
+
+#### PUT /products/:id
+Update product (seller only).
+
+#### DELETE /products/:id
+Delete product - sets status to INACTIVE (seller only).
+
+#### GET /seller/products
+Get my products as seller.
+
+### Marketplace - Orders
+
+#### POST /orders
+Create an order (purchase).
+
+**Authentication**: Required (buyer)
+
+**Request Body**:
+```json
+{
+  "product_id": "prod-uuid",
+  "delivery_info": {
+    "address": "Rua Example, 123",
+    "city": "São Paulo",
+    "state": "SP",
+    "zip": "01234-567",
+    "country": "BR",
+    "notes": "Email: user@example.com"
+  }
+}
+```
+
+Product is marked as SOLD after order creation.
+
+#### GET /orders/:id
+Get order details (buyer or seller only).
+
+#### GET /buyer/orders
+Get my purchases.
+
+#### GET /seller/orders
+Get my sales.
+
+#### POST /orders/:id/complete
+Mark order as complete (buyer only, after DELIVERED).
+
+#### POST /orders/:id/cancel
+Cancel order (buyer or seller, only PENDING).
+
+### Marketplace - Reviews
+
+#### POST /reviews
+Create a review (after order completion).
+
+**Authentication**: Required
+
+**Request Body**:
+```json
+{
+  "order_id": "order-uuid",
+  "rating": 5,
+  "comment": "Excelente produto! Entrega rápida."
+}
+```
+
+Rating must be 1-5. Both buyer and seller can review each other.
+
+#### GET /users/:id/reviews
+Get reviews for a user (public).
+
+**Query Parameters**: `page`, `limit`
+
+#### GET /users/:id/rating
+Get average rating for a user (public).
+
+**Response**:
+```json
+{
+  "average_rating": 4.65,
+  "total_reviews": 120,
+  "rating_breakdown": {
+    "5": 85,
+    "4": 25,
+    "3": 7,
+    "2": 2,
+    "1": 1
+  }
+}
+```
+
 ## Rate Limiting
 
 All endpoints are protected with rate limiting to prevent abuse:
@@ -527,6 +664,48 @@ Configure SMTP in environment variables (optional - system works without email).
 - `created_at`: TIMESTAMP
 - `updated_at`: TIMESTAMP
 
+### product (Sprint 5)
+- `id`: UUID (primary key)
+- `seller_id`: VARCHAR
+- `title`: VARCHAR
+- `description`: TEXT
+- `price`: DECIMAL(10,2)
+- `category`: VARCHAR
+- `status`: ENUM (DRAFT, ACTIVE, SOLD, INACTIVE)
+- `images`: JSONB (array of URLs)
+- `digital_product`: BOOLEAN
+- `file_url`: VARCHAR (nullable)
+- `metadata`: JSONB (nullable)
+- `created_at`: TIMESTAMP
+- `updated_at`: TIMESTAMP
+
+### order (Sprint 5)
+- `id`: UUID (primary key)
+- `buyer_id`: VARCHAR
+- `seller_id`: VARCHAR
+- `product_id`: UUID
+- `payment_id`: UUID (nullable)
+- `amount`: DECIMAL(10,2)
+- `status`: ENUM (PENDING, PAID, DELIVERED, COMPLETED, CANCELLED, DISPUTED)
+- `delivery_info`: JSONB
+- `paid_at`: TIMESTAMP (nullable)
+- `delivered_at`: TIMESTAMP (nullable)
+- `completed_at`: TIMESTAMP (nullable)
+- `cancelled_at`: TIMESTAMP (nullable)
+- `created_at`: TIMESTAMP
+- `updated_at`: TIMESTAMP
+
+### review (Sprint 5)
+- `id`: UUID (primary key)
+- `order_id`: UUID
+- `reviewer_id`: VARCHAR
+- `reviewee_id`: VARCHAR
+- `rating`: INTEGER (1-5)
+- `comment`: TEXT (nullable)
+- `type`: ENUM (BUYER_TO_SELLER, SELLER_TO_BUYER)
+- `created_at`: TIMESTAMP
+- `updated_at`: TIMESTAMP
+
 ## Environment Variables
 
 | Variable | Description | Default |
@@ -558,12 +737,18 @@ Configure SMTP in environment variables (optional - system works without email).
 - `AuditLog`: Tracks audit events
 - `Payment`: Payment transaction records (Sprint 4)
 - `SellerAccount`: Stripe Connect account info (Sprint 4)
+- `Product`: Product listings (Sprint 5)
+- `Order`: Purchase orders (Sprint 5)
+- `Review`: User reviews and ratings (Sprint 5)
 
 ### Services
 - `KycService`: Handles KYC submission, multi-level approval, rejection, and audit logging
 - `EmailService`: Sends email notifications for KYC events
 - `DashboardService`: Provides statistics and metrics (Sprint 4)
 - `StripeService`: Stripe payment integration (Sprint 4)
+- `ProductService`: Product management (Sprint 5)
+- `OrderService`: Order lifecycle management (Sprint 5)
+- `ReviewService`: Review and rating system (Sprint 5)
 
 ### Middleware
 - `ensureAuthenticated`: JWT authentication middleware
@@ -582,35 +767,54 @@ Configure SMTP in environment variables (optional - system works without email).
 - Built with MedusaJS v1 and TypeORM
 - Uses PostgreSQL for data storage
 - Redis for caching and event bus
-- Stripe for payment processing (Sprint 4)
 - S3-compatible storage for file uploads
+- Stripe for payment processing
 - Complete audit logging for all operations
 - Rate limiting on all endpoints
 - CPF validation for Brazilian users
 - Email notifications (optional)
-- Stripe payment processing (Sprint 4)
+- Complete marketplace workflow (products, orders, reviews)
 
 ## Sprints Completed
 
 ✅ **Sprint 1**: KYC Submission, S3 Uploads, Audit Logging  
 ✅ **Sprint 2**: Admin Approval/Rejection Workflow  
 ✅ **Sprint 3**: Rate Limiting, CPF Validation, Email Notifications  
-✅ **Sprint 4**: Admin Dashboard, Multi-Level Workflow, Stripe Payments
+✅ **Sprint 4**: Admin Dashboard, Multi-Level Workflow, Stripe Payments  
+✅ **Sprint 5**: Products, Orders, Reviews - **MARKETPLACE COMPLETO** 🎉
 
 ## API Endpoints Summary
 
-**Total Endpoints**: 20
+**Total Endpoints**: 35
 
 - **User (3)**: Storage presign, KYC submission, Get my KYC
 - **Admin KYC (4)**: List, Get, Approve, Reject
 - **Admin Dashboard (4)**: Stats, Metrics, Activity, Documents
 - **Admin Multi-Level (4)**: List by level, Approve level, Escalate, Reject level
 - **Payments (4)**: Create seller account, Get account, Create intent, Webhook
-- **General (1)**: Stripe webhook
+- **Products (6)**: Create, List, Get, Update, Delete, My Products
+- **Orders (6)**: Create, Get, Buyer Orders, Seller Orders, Complete, Cancel
+- **Reviews (3)**: Create, Get Reviews, Get Rating
+- **Webhooks (1)**: Stripe webhook
 
-## Future Enhancements (Sprint 5+)
+## Complete Marketplace Workflow
 
-- Order management system
+### Seller Flow
+1. Sign up → Submit KYC → Wait for approval
+2. KYC approved → Create Stripe account
+3. Create products → Publish (status: ACTIVE)
+4. Receive orders → Deliver products
+5. Receive reviews from buyers
+
+### Buyer Flow
+1. Browse products → Check seller ratings
+2. Create order → Pay via Stripe
+3. Receive product
+4. Complete order → Leave review
+
+## Future Enhancements (Sprint 6+)
+
+- Full-text search for products
 - Product/service listings
 - Shopping cart functionality
 - Advanced fraud detection (rule-based, non-AI)
