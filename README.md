@@ -36,6 +36,14 @@ MedusaJS-based C2C marketplace backend with complete KYC workflow, multi-level a
 - **Reviews System**: Bidirectional reviews with ratings and comments
 - **Complete Workflow**: Seller lists → Buyer purchases → Reviews
 
+### Sprint 6 - Temporal Release & Disputes 🆕
+- **Temporal Balance Release**: Automatic 72h fund release (independent of order completion)
+- **Dispute System**: Complete dispute resolution (open → respond → admin resolve)
+- **Brazilian Payment Providers**: PagSeguro and MercadoPago with PIX support
+- **Provider Pattern**: Pluggable payment architecture for multi-provider support
+- **Scheduled Jobs**: Automated balance release system
+- **Dispute Protection**: Disputes block withdrawals but NOT balance release
+
 ### 🆕 Payment Restructure - Internal Ledger System
 - **Internal Ledger**: Platform-controlled balance tracking (replaced Stripe Connect)
 - **Seller Balances**: Available, pending, and held funds
@@ -589,6 +597,167 @@ Get average rating for a user (public).
 }
 ```
 
+### Disputes (Sprint 6)
+
+Complete dispute resolution system for buyer protection.
+
+#### POST /disputes
+Create a dispute (buyer).
+
+**Authentication**: Required (Buyer)
+
+**Request Body**:
+```json
+{
+  "order_id": "uuid",
+  "type": "NOT_RECEIVED|NOT_AS_DESCRIBED|DAMAGED|UNAUTHORIZED|OTHER",
+  "description": "Order was never delivered",
+  "buyer_evidence": {
+    "images": ["https://s3.../screenshot.jpg"],
+    "notes": "Tracking shows delivered but nothing received"
+  }
+}
+```
+
+**Response**: 201 Created
+
+**Dispute Types:**
+- `NOT_RECEIVED`: Product not received
+- `NOT_AS_DESCRIBED`: Product differs from listing
+- `DAMAGED`: Product damaged/defective
+- `UNAUTHORIZED`: Unauthorized transaction
+- `OTHER`: Other issues
+
+#### GET /disputes/:id
+Get dispute details (buyer, seller, or admin).
+
+#### GET /buyer/disputes
+Get buyer's disputes (paginated).
+
+#### GET /seller/disputes
+Get seller's disputes (paginated).
+
+#### POST /disputes/:id/respond
+Seller responds to dispute with evidence.
+
+**Authentication**: Required (Seller)
+
+**Request Body**:
+```json
+{
+  "seller_response": "Package was delivered with tracking proof",
+  "seller_evidence": {
+    "tracking_number": "BR123456789BR",
+    "documents": ["https://s3.../tracking.pdf"]
+  }
+}
+```
+
+#### POST /admin/disputes/:id/resolve
+Admin resolves dispute (BUYER or SELLER).
+
+**Authentication**: Required (Admin)
+
+**Request Body**:
+```json
+{
+  "resolution": "BUYER",
+  "notes": "No delivery proof provided. Refund approved."
+}
+```
+
+**Important Notes:**
+- ⏰ Dispute window: 30 days (configurable via `DISPUTE_WINDOW_DAYS`)
+- 🚫 Active disputes **block withdrawals** but **do NOT block balance release**
+- ✅ Temporal release still proceeds normally (72h) even with active disputes
+- 🔒 Only order participants (buyer/seller) and admins can view disputes
+
+### Temporal Balance Release (Sprint 6)
+
+Automatic fund release system for seller protection.
+
+**How it works:**
+1. **Order Paid** → Funds go to `pending_balance`
+2. **72 Hours Later** → Scheduled job automatically releases funds to `available_balance`
+3. **Seller Withdraws** → Can withdraw from `available_balance` (if no active disputes)
+
+**Key Features:**
+- ⏰ **Automatic Release**: No manual intervention required
+- 🔓 **Independent of Order Status**: Funds release even if order not marked "completed"
+- ⚖️ **Dispute Protected**: Disputes block withdrawals but NOT balance release
+- 🔧 **Configurable**: Set `BALANCE_RELEASE_HOURS` environment variable (default: 72)
+
+**Balance States:**
+```json
+{
+  "available_balance": 250.00,   // ✅ Can withdraw immediately
+  "pending_balance": 100.00,     // ⏳ Waiting for 72h release
+  "held_balance": 0.00,          // 🚫 Frozen (not used currently)
+  "total_earned": 1500.00,       // 📊 Lifetime earnings
+  "total_withdrawn": 1150.00     // 💰 Lifetime withdrawals
+}
+```
+
+**Scheduled Job Setup:**
+```javascript
+// Run every hour with cron
+import cron from 'node-cron';
+import { scheduleBalanceRelease } from './services/scheduled/balance-release';
+
+cron.schedule('0 * * * *', async () => {
+  const manager = getEntityManager();
+  await scheduleBalanceRelease(manager);
+});
+```
+
+See [SPRINT6_SUMMARY.md](./SPRINT6_SUMMARY.md) for complete documentation.
+
+### Brazilian Payment Providers (Sprint 6)
+
+Support for Brazilian payment processors with PIX instant payments.
+
+**Supported Providers:**
+1. **Stripe** - Global payments, credit cards
+2. **PagSeguro** - Brazilian market, PIX, Boleto
+3. **MercadoPago** - Latin America, PIX, installments
+
+**Configuration:**
+```env
+# For customer payments
+PAYMENT_PROVIDER=mercadopago
+
+# For seller withdrawals
+WITHDRAWAL_PROVIDER=pagseguro
+
+# PagSeguro credentials
+PAGSEGURO_EMAIL=your-email@example.com
+PAGSEGURO_TOKEN=your_token
+PAGSEGURO_SANDBOX=true
+
+# MercadoPago credentials
+MERCADOPAGO_ACCESS_TOKEN=APP_USR-your_token
+MERCADOPAGO_PUBLIC_KEY=APP_USR-your_key
+```
+
+**PIX Withdrawal Example:**
+```json
+{
+  "amount": 100.00,
+  "bank_info": {
+    "account_type": "PIX",
+    "pix_key": "user@example.com",
+    "account_holder_name": "João Silva",
+    "account_holder_document": "12345678900"
+  }
+}
+```
+
+**Provider Pattern:**
+- ✅ Single interface for all providers
+- ✅ Easy switching via environment variables
+- ✅ Different providers for payments vs withdrawals
+- ✅ No code changes to add new providers
+
 ## Rate Limiting
 
 All endpoints are protected with rate limiting to prevent abuse:
@@ -735,6 +904,15 @@ Configure SMTP in environment variables (optional - system works without email).
 | `SMTP_USER` | SMTP username (optional) | - |
 | `SMTP_PASS` | SMTP password (optional) | - |
 | `SMTP_FROM` | From email address (optional) | `noreply@fuyora.com` |
+| `BALANCE_RELEASE_HOURS` | Hours before auto-release of funds | `72` |
+| `DISPUTE_WINDOW_DAYS` | Days allowed to open disputes | `30` |
+| `PAYMENT_PROVIDER` | Payment provider (stripe\|pagseguro\|mercadopago) | `stripe` |
+| `WITHDRAWAL_PROVIDER` | Withdrawal provider (stripe\|pagseguro\|mercadopago) | `stripe` |
+| `PAGSEGURO_EMAIL` | PagSeguro account email (if using) | - |
+| `PAGSEGURO_TOKEN` | PagSeguro API token (if using) | - |
+| `PAGSEGURO_SANDBOX` | Use PagSeguro sandbox (if using) | `true` |
+| `MERCADOPAGO_ACCESS_TOKEN` | MercadoPago access token (if using) | - |
+| `MERCADOPAGO_PUBLIC_KEY` | MercadoPago public key (if using) | - |
 
 **Note**: Email configuration is optional. If not set, the system logs would-send messages instead of sending emails.
 
@@ -789,11 +967,12 @@ Configure SMTP in environment variables (optional - system works without email).
 ✅ **Sprint 2**: Admin Approval/Rejection Workflow  
 ✅ **Sprint 3**: Rate Limiting, CPF Validation, Email Notifications  
 ✅ **Sprint 4**: Admin Dashboard, Multi-Level Workflow, Stripe Payments  
-✅ **Sprint 5**: Products, Orders, Reviews - **MARKETPLACE COMPLETO** 🎉
+✅ **Sprint 5**: Products, Orders, Reviews - **MARKETPLACE COMPLETO** 🎉  
+✅ **Sprint 6**: Temporal Release (72h), Disputes, Brazilian Providers 🇧🇷
 
 ## API Endpoints Summary
 
-**Total Endpoints**: 35
+**Total Endpoints**: 56
 
 - **User (3)**: Storage presign, KYC submission, Get my KYC
 - **Admin KYC (4)**: List, Get, Approve, Reject
@@ -803,6 +982,8 @@ Configure SMTP in environment variables (optional - system works without email).
 - **Products (6)**: Create, List, Get, Update, Delete, My Products
 - **Orders (6)**: Create, Get, Buyer Orders, Seller Orders, Complete, Cancel
 - **Reviews (3)**: Create, Get Reviews, Get Rating
+- **Disputes (6)**: Create, Get, Buyer Disputes, Seller Disputes, Respond, Admin Resolve
+- **Ledger (10)**: Balance, Transactions, Withdrawals (create, approve, reject, list)
 - **Webhooks (1)**: Stripe webhook
 
 ## Complete Marketplace Workflow
@@ -820,13 +1001,23 @@ Configure SMTP in environment variables (optional - system works without email).
 3. Receive product
 4. Complete order → Leave review
 
-## Future Enhancements (Sprint 6+)
+## Documentation
+
+Detailed sprint documentation:
+- [SPRINT1_SUMMARY.md](./SPRINT1_SUMMARY.md) - KYC, S3 Uploads, Audit Logging
+- [SPRINT2_SUMMARY.md](./SPRINT2_SUMMARY.md) - Admin Approval Workflow
+- [SPRINT3_SUMMARY.md](./SPRINT3_SUMMARY.md) - Rate Limiting, CPF Validation, Email
+- [SPRINT4_SUMMARY.md](./SPRINT4_SUMMARY.md) - Dashboard, Multi-Level, Stripe Payments
+- [SPRINT5_SUMMARY.md](./SPRINT5_SUMMARY.md) - Products, Orders, Reviews
+- [SPRINT6_SUMMARY.md](./SPRINT6_SUMMARY.md) - Temporal Release, Disputes, Brazilian Providers 🆕
+- [PAYMENT_ARCHITECTURE.md](./PAYMENT_ARCHITECTURE.md) - Internal Ledger System
+
+## Future Enhancements (Sprint 7+)
 
 - Full-text search for products
-- Product/service listings
 - Shopping cart functionality
 - Advanced fraud detection (rule-based, non-AI)
 - Seller performance analytics
-- Buyer/seller ratings and reviews
-- Dispute resolution system
 - Advanced payment features (subscriptions, installments)
+- Automated refund processing
+- Multi-language support
