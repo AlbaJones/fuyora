@@ -1,6 +1,6 @@
 import { TransactionBaseService } from "@medusajs/medusa";
 import { Repository } from "typeorm";
-import { Product, ProductStatus } from "../models/marketplace";
+import { Product, ProductStatus, ProductReviewStatus } from "../models/marketplace";
 
 interface CreateProductInput {
   seller_id: string;
@@ -78,6 +78,12 @@ class ProductService extends TransactionBaseService {
       }
 
       Object.assign(product, input);
+
+      // When product is updated, it goes back to pending review
+      product.review_status = ProductReviewStatus.PENDING;
+      product.rejection_reason = null;
+      product.reviewed_by = null;
+      product.reviewed_at = null;
 
       return await productRepo.save(product);
     });
@@ -165,6 +171,78 @@ class ProductService extends TransactionBaseService {
     });
 
     return { products, total };
+  }
+
+  // Admin methods for product moderation
+  async getPendingProducts(
+    page: number = 1,
+    limit: number = 20
+  ): Promise<{ products: Product[]; total: number }> {
+    const skip = (page - 1) * limit;
+
+    const [products, total] = await this.productRepository_.findAndCount({
+      where: { review_status: ProductReviewStatus.PENDING },
+      order: { created_at: "ASC" },
+      skip,
+      take: limit,
+    });
+
+    return { products, total };
+  }
+
+  async approveProduct(
+    productId: string,
+    adminId: string
+  ): Promise<Product> {
+    return await this.atomicPhase_(async (manager) => {
+      const productRepo = manager.getRepository(Product);
+
+      const product = await productRepo.findOne({
+        where: { id: productId },
+      });
+
+      if (!product) {
+        throw new Error("Product not found");
+      }
+
+      product.review_status = ProductReviewStatus.APPROVED;
+      product.status = ProductStatus.ACTIVE;
+      product.rejection_reason = null;
+      product.reviewed_by = adminId;
+      product.reviewed_at = new Date();
+
+      return await productRepo.save(product);
+    });
+  }
+
+  async rejectProduct(
+    productId: string,
+    adminId: string,
+    reason: string
+  ): Promise<Product> {
+    return await this.atomicPhase_(async (manager) => {
+      const productRepo = manager.getRepository(Product);
+
+      const product = await productRepo.findOne({
+        where: { id: productId },
+      });
+
+      if (!product) {
+        throw new Error("Product not found");
+      }
+
+      if (!reason || reason.trim().length === 0) {
+        throw new Error("Rejection reason is required");
+      }
+
+      product.review_status = ProductReviewStatus.REJECTED;
+      product.status = ProductStatus.DRAFT;
+      product.rejection_reason = reason;
+      product.reviewed_by = adminId;
+      product.reviewed_at = new Date();
+
+      return await productRepo.save(product);
+    });
   }
 }
 

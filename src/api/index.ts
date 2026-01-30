@@ -6,6 +6,7 @@ import adminDashboardRoutes from "./admin-dashboard";
 import adminMultilevelRoutes from "./admin-multilevel";
 import paymentsRoutes from "./payments";
 import productsRoutes from "./products";
+import adminProductsRoutes from "./admin-products";
 import ordersRoutes from "./orders";
 import reviewsRoutes from "./reviews";
 import withdrawalsRoutes from "./withdrawals";
@@ -33,6 +34,7 @@ export default (rootDirectory: string): Router => {
   router.use("/admin/kyc", adminMultilevelRoutes);
   router.use("/payments", paymentsRoutes);
   router.use("/products", productsRoutes);
+  router.use("/admin/products", adminProductsRoutes);
   router.use("/orders", ordersRoutes);
   router.use("/reviews", reviewsRoutes);
   router.use("/withdrawals", withdrawalsRoutes);

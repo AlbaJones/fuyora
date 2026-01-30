@@ -15,6 +15,12 @@ export enum ProductStatus {
   INACTIVE = "INACTIVE",
 }
 
+export enum ProductReviewStatus {
+  PENDING = "PENDING",
+  APPROVED = "APPROVED",
+  REJECTED = "REJECTED",
+}
+
 @Entity()
 export class Product extends BaseEntity {
   @PrimaryGeneratedColumn("uuid")
@@ -54,6 +60,22 @@ export class Product extends BaseEntity {
 
   @Column({ type: "jsonb", nullable: true })
   metadata!: Record<string, any> | null;
+
+  @Column({
+    type: "enum",
+    enum: ProductReviewStatus,
+    default: ProductReviewStatus.PENDING,
+  })
+  review_status!: ProductReviewStatus;
+
+  @Column({ type: "text", nullable: true })
+  rejection_reason!: string | null;
+
+  @Column({ type: "varchar", nullable: true })
+  reviewed_by!: string | null;
+
+  @Column({ type: "timestamp with time zone", nullable: true })
+  reviewed_at!: Date | null;
 
   @CreateDateColumn({ type: "timestamp with time zone" })
   created_at!: Date;
