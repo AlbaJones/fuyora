@@ -12,6 +12,8 @@ import {
   Transaction,
   Withdrawal,
   Dispute,
+  Ban,
+  UnbanRequest,
 } from "../models";
 
 export default async (container: any): Promise<void> => {
@@ -26,6 +28,8 @@ export default async (container: any): Promise<void> => {
     const transactionRepository = dataSource.getRepository(Transaction);
     const withdrawalRepository = dataSource.getRepository(Withdrawal);
     const disputeRepository = dataSource.getRepository(Dispute);
+    const banRepository = dataSource.getRepository(Ban);
+    const unbanRequestRepository = dataSource.getRepository(UnbanRequest);
 
     container.register({
       kycSubmissionRepository: {
@@ -57,6 +61,12 @@ export default async (container: any): Promise<void> => {
       },
       disputeRepository: {
         resolve: () => disputeRepository,
+      },
+      banRepository: {
+        resolve: () => banRepository,
+      },
+      unbanRequestRepository: {
+        resolve: () => unbanRequestRepository,
       },
     });
   } catch (error) {

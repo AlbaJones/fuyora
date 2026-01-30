@@ -10,6 +10,8 @@ import ordersRoutes from "./orders";
 import reviewsRoutes from "./reviews";
 import withdrawalsRoutes from "./withdrawals";
 import disputesRoutes from "./disputes";
+import adminBansRoutes from "./admin-bans";
+import unbanRequestsRoutes from "./unban-requests";
 import bodyParser from "body-parser";
 import cors from "cors";
 
@@ -21,17 +23,20 @@ export default (rootDirectory: string): Router => {
   router.use(bodyParser.json());
 
   // Mount routes
-  router.use(storageRoutes);
-  router.use(kycRoutes);
-  router.use(adminKycRoutes);
-  router.use(adminDashboardRoutes);
-  router.use(adminMultilevelRoutes);
-  router.use(paymentsRoutes);
-  router.use(productsRoutes);
-  router.use(ordersRoutes);
-  router.use(reviewsRoutes);
-  router.use(withdrawalsRoutes);
-  router.use(disputesRoutes);
+  router.use("/storage", storageRoutes);
+  router.use("/kyc", kycRoutes);
+  router.use("/admin/kyc", adminKycRoutes);
+  router.use("/admin/dashboard", adminDashboardRoutes);
+  router.use("/admin/kyc", adminMultilevelRoutes);
+  router.use("/payments", paymentsRoutes);
+  router.use("/products", productsRoutes);
+  router.use("/orders", ordersRoutes);
+  router.use("/reviews", reviewsRoutes);
+  router.use("/withdrawals", withdrawalsRoutes);
+  router.use("/disputes", disputesRoutes);
+  router.use("/admin/bans", adminBansRoutes);
+  router.use("/unban-requests", unbanRequestsRoutes);
+  router.use("/auth", unbanRequestsRoutes); // For /auth/ban-status
 
   return router;
 };

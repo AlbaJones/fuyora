@@ -4,3 +4,4 @@ export * from "./payment";
 export * from "./marketplace";
 export * from "./ledger";
 export * from "./dispute";
+export * from "./ban";
