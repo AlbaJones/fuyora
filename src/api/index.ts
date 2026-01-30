@@ -13,6 +13,8 @@ import disputesRoutes from "./disputes";
 import adminBansRoutes from "./admin-bans";
 import unbanRequestsRoutes from "./unban-requests";
 import banAppealsRoutes from "./ban-appeals";
+import languageViolationsRoutes from "./language-violations";
+import adminLanguageViolationsRoutes from "./admin-language-violations";
 import bodyParser from "body-parser";
 import cors from "cors";
 
@@ -40,6 +42,8 @@ export default (rootDirectory: string): Router => {
   router.use("/auth", unbanRequestsRoutes); // For /auth/ban-status
   router.use("/ban-appeals", banAppealsRoutes);
   router.use("/admin/ban-appeals", banAppealsRoutes);
+  router.use("/", languageViolationsRoutes); // For /user/language-violations and /language-violations/:id/appeal
+  router.use("/admin", adminLanguageViolationsRoutes); // For /admin/language-violations
 
   return router;
 };

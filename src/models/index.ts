@@ -5,3 +5,4 @@ export * from "./marketplace";
 export * from "./ledger";
 export * from "./dispute";
 export * from "./ban";
+export * from "./language-violation";

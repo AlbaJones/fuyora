@@ -15,6 +15,7 @@ import {
   Ban,
   UnbanRequest,
   BanAppealRequest,
+  LanguageViolation,
 } from "../models";
 
 export default async (container: any): Promise<void> => {
@@ -32,6 +33,7 @@ export default async (container: any): Promise<void> => {
     const banRepository = dataSource.getRepository(Ban);
     const unbanRequestRepository = dataSource.getRepository(UnbanRequest);
     const banAppealRepository = dataSource.getRepository(BanAppealRequest);
+    const languageViolationRepository = dataSource.getRepository(LanguageViolation);
 
     container.register({
       kycSubmissionRepository: {
@@ -72,6 +74,9 @@ export default async (container: any): Promise<void> => {
       },
       banAppealRepository: {
         resolve: () => banAppealRepository,
+      },
+      languageViolationRepository: {
+        resolve: () => languageViolationRepository,
       },
     });
   } catch (error) {
