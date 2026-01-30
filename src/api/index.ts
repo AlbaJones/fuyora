@@ -12,6 +12,7 @@ import withdrawalsRoutes from "./withdrawals";
 import disputesRoutes from "./disputes";
 import adminBansRoutes from "./admin-bans";
 import unbanRequestsRoutes from "./unban-requests";
+import banAppealsRoutes from "./ban-appeals";
 import bodyParser from "body-parser";
 import cors from "cors";
 
@@ -37,6 +38,8 @@ export default (rootDirectory: string): Router => {
   router.use("/admin/bans", adminBansRoutes);
   router.use("/unban-requests", unbanRequestsRoutes);
   router.use("/auth", unbanRequestsRoutes); // For /auth/ban-status
+  router.use("/ban-appeals", banAppealsRoutes);
+  router.use("/admin/ban-appeals", banAppealsRoutes);
 
   return router;
 };
