@@ -1,9 +1,11 @@
 import { Router, Request, Response } from "express";
 import { ensureAuthenticated } from "../middleware/auth";
+import { kycSubmissionLimiter, authLimiter } from "../middleware/rate-limit";
+import { validateCpf } from "../utils/cpf-validator";
 
 const router = Router();
 
-router.post("/kyc/submissions", ensureAuthenticated, async (req: Request, res: Response) => {
+router.post("/kyc/submissions", kycSubmissionLimiter, ensureAuthenticated, async (req: Request, res: Response) => {
   try {
     const { full_name, cpf, address, documents } = req.body;
 
@@ -11,6 +13,14 @@ router.post("/kyc/submissions", ensureAuthenticated, async (req: Request, res: R
     if (!full_name || !cpf || !address || !documents) {
       return res.status(400).json({
         message: "Missing required fields: full_name, cpf, address, documents",
+      });
+    }
+
+    // Validate CPF
+    const cpfValidation = validateCpf(cpf);
+    if (!cpfValidation.valid) {
+      return res.status(400).json({
+        message: `Invalid CPF: ${cpfValidation.error}`,
       });
     }
 
@@ -31,9 +41,10 @@ router.post("/kyc/submissions", ensureAuthenticated, async (req: Request, res: R
     const userId = req.user!.userId || (req.user as any).id;
     const kycService = req.scope.resolve("kycService");
 
+    // Use formatted CPF for storage
     const submission = await kycService.submitKyc(userId, {
       full_name,
-      cpf,
+      cpf: cpfValidation.formatted!,
       address,
       documents,
     });
@@ -57,7 +68,7 @@ router.post("/kyc/submissions", ensureAuthenticated, async (req: Request, res: R
   }
 });
 
-router.get("/kyc/submissions/me", ensureAuthenticated, async (req: Request, res: Response) => {
+router.get("/kyc/submissions/me", authLimiter, ensureAuthenticated, async (req: Request, res: Response) => {
   try {
     const userId = req.user!.userId || (req.user as any).id;
     const kycService = req.scope.resolve("kycService");

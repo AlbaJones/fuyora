@@ -1,6 +1,7 @@
 import { Router, Request, Response } from "express";
 import { ensureAuthenticated } from "../middleware/auth";
 import { ensureAdmin } from "../middleware/admin";
+import { adminLimiter } from "../middleware/rate-limit";
 import { KycStatus } from "../models";
 
 const router = Router();
@@ -8,6 +9,7 @@ const router = Router();
 // List all KYC submissions (admin only)
 router.get(
   "/admin/kyc/submissions",
+  adminLimiter,
   ensureAuthenticated,
   ensureAdmin,
   async (req: Request, res: Response) => {
@@ -80,6 +82,7 @@ router.get(
 // Get specific KYC submission (admin only)
 router.get(
   "/admin/kyc/submissions/:id",
+  adminLimiter,
   ensureAuthenticated,
   ensureAdmin,
   async (req: Request, res: Response) => {
@@ -120,6 +123,7 @@ router.get(
 // Approve KYC submission (admin only)
 router.post(
   "/admin/kyc/submissions/:id/approve",
+  adminLimiter,
   ensureAuthenticated,
   ensureAdmin,
   async (req: Request, res: Response) => {
@@ -162,6 +166,7 @@ router.post(
 // Reject KYC submission (admin only)
 router.post(
   "/admin/kyc/submissions/:id/reject",
+  adminLimiter,
   ensureAuthenticated,
   ensureAdmin,
   async (req: Request, res: Response) => {

@@ -1,5 +1,6 @@
 import { Router, Request, Response } from "express";
 import { ensureAuthenticated } from "../middleware/auth";
+import { presignLimiter } from "../middleware/rate-limit";
 import { S3PresignService } from "../utils/s3-presign";
 import { v4 as uuidv4 } from "uuid";
 
@@ -14,7 +15,7 @@ const ALLOWED_CONTENT_TYPES = [
   "application/pdf",
 ];
 
-router.post("/storage/presign", ensureAuthenticated, async (req: Request, res: Response) => {
+router.post("/storage/presign", presignLimiter, ensureAuthenticated, async (req: Request, res: Response) => {
   try {
     const { type, content_type, content_length } = req.body;
 
