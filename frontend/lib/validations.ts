@@ -39,7 +39,7 @@ const validateCPF = (cpf: string): boolean => {
   return true;
 };
 
-// Register validation
+// Register validation (simplified - no role, no CPF)
 export const registerSchema = z.object({
   email: z.string().email('Email inválido'),
   password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres'),
@@ -48,23 +48,25 @@ export const registerSchema = z.object({
     .max(20, 'Username deve ter no máximo 20 caracteres')
     .regex(/^[a-zA-Z0-9_]+$/, 'Username deve conter apenas letras, números e _'),
   full_name: z.string().min(3, 'Nome completo deve ter pelo menos 3 caracteres'),
-  role: z.enum(['buyer', 'seller'], {
-    errorMap: () => ({ message: 'Selecione um tipo de conta' }),
-  }),
-  cpf: z.string().optional(),
-}).refine((data) => {
-  // If role is seller, CPF is required and must be valid
-  if (data.role === 'seller') {
-    if (!data.cpf) return false;
-    return validateCPF(data.cpf);
-  }
-  return true;
-}, {
-  message: 'CPF inválido',
-  path: ['cpf'],
 });
 
 export type RegisterFormData = z.infer<typeof registerSchema>;
+
+// KYC validation (with CPF - used in KYC form, not registration)
+export const kycSchema = z.object({
+  cpf: z.string().refine(validateCPF, {
+    message: 'CPF inválido',
+  }),
+  full_address: z.object({
+    line: z.string().min(5, 'Endereço deve ter pelo menos 5 caracteres'),
+    city: z.string().min(2, 'Cidade inválida'),
+    state: z.string().length(2, 'Estado deve ter 2 letras'),
+    zip: z.string().regex(/^\d{5}-?\d{3}$/, 'CEP inválido'),
+    country: z.string().default('BR'),
+  }),
+});
+
+export type KYCFormData = z.infer<typeof kycSchema>;
 
 // Product creation validation
 export const productSchema = z.object({

@@ -1,21 +1,22 @@
 // User types
-export type UserRole = 'buyer' | 'seller' | 'admin';
-
-export type KYCStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+export type KYCStatus = 'NONE' | 'PENDING' | 'APPROVED' | 'REJECTED';
 
 export interface User {
   id: string;
   email: string;
   username: string;
   full_name: string;
-  role: UserRole;
-  kyc_status?: KYCStatus;
+  is_admin: boolean;
+  kyc_status: KYCStatus;
   kyc_rejection_reason?: string;
   is_banned: boolean;
   ban_reason?: string;
   ban_type?: 'TEMPORARY' | 'PERMANENT';
   ban_expires_at?: string;
   created_at: string;
+  
+  // Computed property: can sell if KYC is approved
+  get can_sell(): boolean;
 }
 
 // Auth context types
@@ -35,8 +36,6 @@ export interface RegisterData {
   password: string;
   username: string;
   full_name: string;
-  role: UserRole;
-  cpf?: string; // Required if role is 'seller'
 }
 
 // Login credentials

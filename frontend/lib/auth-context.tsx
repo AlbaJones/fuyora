@@ -39,7 +39,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       // Get current user from backend
       const response = await api.get('/auth/me');
-      setUser(response.data.user);
+      const userData = response.data.user;
+      
+      // Add can_sell computed property
+      const userWithPermissions = {
+        ...userData,
+        can_sell: userData.kyc_status === 'APPROVED',
+      };
+      
+      setUser(userWithPermissions);
     } catch (error) {
       // Token invalid, clear it
       localStorage.removeItem(TOKEN_KEY);
@@ -54,20 +62,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await api.post('/auth/login', { email, password });
       const { token, user: userData } = response.data;
       
+      // Add can_sell computed property
+      const userWithPermissions = {
+        ...userData,
+        can_sell: userData.kyc_status === 'APPROVED',
+      };
+      
       // Store token
       localStorage.setItem(TOKEN_KEY, token);
-      setUser(userData);
+      setUser(userWithPermissions);
 
       // Redirect based on ban status
-      if (userData.is_banned) {
+      if (userWithPermissions.is_banned) {
         router.push('/banned');
         return;
       }
 
-      // Redirect based on role
-      if (userData.role === 'admin') {
+      // Redirect based on permissions
+      if (userWithPermissions.is_admin) {
         router.push('/admin/dashboard');
-      } else if (userData.role === 'seller') {
+      } else if (userWithPermissions.can_sell) {
         router.push('/seller/products');
       } else {
         router.push('/products');
@@ -82,16 +96,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await api.post('/auth/register', data);
       const { token, user: userData } = response.data;
       
+      // Add can_sell computed property
+      const userWithPermissions = {
+        ...userData,
+        can_sell: userData.kyc_status === 'APPROVED',
+      };
+      
       // Store token
       localStorage.setItem(TOKEN_KEY, token);
-      setUser(userData);
+      setUser(userWithPermissions);
 
-      // Redirect based on role
-      if (userData.role === 'seller') {
-        router.push('/seller/products');
-      } else {
-        router.push('/products');
-      }
+      // After registration, always redirect to marketplace
+      // Users can navigate to KYC if they want to sell
+      router.push('/products');
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Erro ao criar conta');
     }
